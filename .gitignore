@@ -210,3 +210,4 @@ __marimo__/
 
 data/
 test_data/
+src/rag/qdrant_storage
