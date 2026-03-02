@@ -5,6 +5,7 @@ import re
 from typing import Any, TypedDict
 
 from src.rag.config import Config
+from src.rag.guardrails import check_for_banned_content, should_escalate
 from src.rag.llm_adapters import OllamaLLM, APILLM, get_llm
 from src.rag.prompt_handler import PromptHandler
 from src.rag.retriever import Retriever, RetrievedChunk
@@ -75,10 +76,24 @@ class Agent:
         history: list[dict[str, str]] = sess.get("history") or []
         clarify_rounds: int = sess.get("clarify_rounds") or 0
 
-        # 1. Retrieve chunks
+        banned = check_for_banned_content(question)
+        if banned["flagged"]:
+            history.append({"role": "user", "content": question})
+            refusal = "Your message was flagged for inappropriate content. Please rephrase your question."
+            history.append({"role": "assistant", "content": refusal})
+            return {
+                "action": "blocked",
+                "response": refusal,
+                "confidence": 0.0,
+                "session": {
+                    "history": history,
+                    "clarify_rounds": clarify_rounds,
+                    "last_confidence": 0.0,
+                },
+            }
+
         chunks = self._retriever.retrieve(question)
 
-        # 2. Compute confidence (retrieval-based; LLM override when structured output used)
         retrieval_confidence = _compute_confidence(chunks)
         confidence = retrieval_confidence
 
@@ -87,11 +102,8 @@ class Agent:
         ) or "(No relevant context retrieved.)"
 
         threshold = self._config.confidence_threshold
-        max_clarify = self._config.max_clarify_rounds
 
-        # 3–6. Decide action
-        if confidence < threshold and clarify_rounds < max_clarify:
-            # Clarify: use clarify prompt to generate clarifying question(s)
+        if confidence < threshold and not should_escalate(confidence, clarify_rounds, self._config):
             clarify_prompt = self._prompt_handler.get_prompt("clarify")
             messages = [
                 {"role": "system", "content": clarify_prompt},
@@ -103,18 +115,16 @@ class Agent:
             response_text = self._llm.invoke(messages)
             action = "clarify"
             clarify_rounds += 1
-        elif confidence < threshold and clarify_rounds >= max_clarify:
-            # Escalate
+        elif should_escalate(confidence, clarify_rounds, self._config):
             action = "escalate"
             response_text = (
                 "I don't have enough information to answer confidently. "
                 "I'm escalating to a human operator for assistance."
             )
         else:
-            # Answer: use agent_system prompt
-            system_prompt = self._prompt_handler.get_prompt("agent_system")
+            sys_prompt = self._prompt_handler.get_prompt("agent_system")
             messages = [
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": sys_prompt},
                 {
                     "role": "user",
                     "content": f"Context:\n{context_block}\n\nQuestion: {question}\n\nAnswer based on the context above:",
