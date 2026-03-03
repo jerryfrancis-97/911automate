@@ -21,7 +21,7 @@ jobs:
         run: pip install yapf
 
       - name: Check formatting
-        run: yapf --diff --recursive src/ tests/
+        run: yapf --diff --recursive src/ api/ tests/
 
   test:
     name: Unit tests
@@ -34,14 +34,14 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install --no-cache-dir -r requirements.txt
+        run: pip install --no-cache-dir -r requirements.txt pytest-asyncio
 
       - name: Run unit tests
         # Only run tests that are fully mocked and require no external services
         # (Qdrant, sentence-transformers model downloads, Ollama, network).
         # Integration tests live in the other test_*.py files and are skipped here.
         run: |
-          pytest \
+            pytest \
             tests/test_agent.py \
             tests/test_guardrails.py \
             tests/test_config.py \
@@ -52,4 +52,5 @@ jobs:
             tests/test_observability.py \
             tests/test_qdrant_schema.py \
             tests/test_idempotent_ingestion.py \
+            tests/test_api.py \
             -v

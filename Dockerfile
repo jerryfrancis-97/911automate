@@ -6,8 +6,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application source and prompt files
+# Copy application source, API, and prompt files
 COPY src/ ./src/
+COPY api/ ./api/
 COPY prompts/ ./prompts/
 
 # Project root must be on PYTHONPATH so `from src.rag.xxx import ...` resolves

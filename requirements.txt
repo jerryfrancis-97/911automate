@@ -15,20 +15,20 @@ pymupdf4llm>=0.0.21
 # Text splitters (MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter)
 langchain-text-splitters>=0.2.0
 
-# For HuggingFaceEmbeddings (embedder)
-sentence-transformers>=2.2.0
-langchain-huggingface>=0.1.0
-
-# LLM adapters (Ollama, OpenAI-compatible API)
+# LLM adapters and embeddings (Ollama, OpenAI-compatible API)
 langchain-ollama>=0.2.0
 langchain-openai>=0.2.0
 
-# Observability (OpenTelemetry)
-opentelemetry-api>=1.20.0
-opentelemetry-sdk>=1.20.0
+# API
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+httpx>=0.27.0
+streamlit>=1.30.0
+requests>=2.31.0
 
 # Dev
 pytest>=7.0.0
+pytest-asyncio>=0.23.0
 yapf>=0.40.0
 mypy>=1.0.0
 fpdf2>=2.7.0

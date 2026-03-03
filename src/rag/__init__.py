@@ -37,10 +37,8 @@ def _import_llm_adapters():
     globals()["get_llm"] = get_llm
     __all__.extend(["APILLM", "OllamaLLM", "get_llm"])
 
-def _import_chunking():
-    from src.rag.chunking import create_chunks  # noqa: F401
-    globals()["create_chunks"] = create_chunks
-    __all__.append("create_chunks")
+# Chunking is NOT eagerly imported — it pulls in langchain_text_splitters → sentence_transformers
+# → transformers (30+ s). Use "from src.rag.chunking import create_chunks" when needed.
 
 def _import_embedder():
     from src.rag.embedder import Embedder  # noqa: F401
@@ -61,10 +59,9 @@ def _import_vectordb():
     __all__.extend(["ChunkItem", "VectorDBQdrant"])
 
 def _import_agent():
-    from src.rag.agent import Agent, AgentSession  # noqa: F401
+    from src.rag.agent import Agent  # noqa: F401
     globals()["Agent"] = Agent
-    globals()["AgentSession"] = AgentSession
-    __all__.extend(["Agent", "AgentSession"])
+    __all__.append("Agent")
 
 
 for _fn in (
@@ -72,7 +69,6 @@ for _fn in (
     _import_prompt_handler,
     _import_guardrails,
     _import_llm_adapters,
-    _import_chunking,
     _import_embedder,
     _import_retriever,
     _import_vectordb,

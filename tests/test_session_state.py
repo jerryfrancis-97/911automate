@@ -86,6 +86,16 @@ def test_store_implements_protocol():
     assert isinstance(InMemorySessionStore(), SessionStore)
 
 
+def test_store_list_ids():
+    """list_ids() returns all session IDs in the store."""
+    store = InMemorySessionStore()
+    assert store.list_ids() == []
+
+    store.put(SessionState(session_id="a"))
+    store.put(SessionState(session_id="b"))
+    assert set(store.list_ids()) == {"a", "b"}
+
+
 # ---------------------------------------------------------------------------
 # get_or_create_session
 # ---------------------------------------------------------------------------

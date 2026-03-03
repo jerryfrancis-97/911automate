@@ -1,7 +1,8 @@
 """Retriever that queries Qdrant and optionally re-ranks with MMR."""
 
+from __future__ import annotations
+
 import logging
-import time
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -144,57 +145,37 @@ class Retriever:
         use_mmr: bool | None = None,
     ) -> list[RetrievedChunk]:
         """Retrieve chunks for *query*. Returns list of RetrievedChunk dicts."""
-        from src.rag.observability import (
-            retrieval_hit_counter,
-            retrieval_latency,
-            tracer,
-        )
-
         k = top_k if top_k is not None else self._config.top_k
         do_mmr = use_mmr if use_mmr is not None else self._use_mmr
         if k <= 0:
             return []
 
-        t0 = time.perf_counter()
-        with tracer.start_as_current_span("retrieve") as span:
-            span.set_attribute("query", query[:200])
-            span.set_attribute("top_k", k)
-
-            query_vec = self._embedder.embed_texts([query])
-            if not query_vec:
-                return []
-            query_vec = query_vec[0]
-            candidate_k = k * self._candidate_multiplier
-            results = self._vectordb.search_vector_with_vectors(
-                query_vec, top_k=candidate_k
+        query_vec = self._embedder.embed_texts([query])
+        if not query_vec:
+            return []
+        query_vec = query_vec[0]
+        candidate_k = k * self._candidate_multiplier
+        results = self._vectordb.search_vector_with_vectors(
+            query_vec, top_k=candidate_k
+        )
+        if not results:
+            return []
+        if do_mmr and len(results) > k:
+            results = _mmr_select(
+                query_vec, results, top_k=k, mmr_lambda=self._mmr_lambda
             )
-            if not results:
-                span.set_attribute("num_results", 0)
-                return []
-            if do_mmr and len(results) > k:
-                results = _mmr_select(
-                    query_vec, results, top_k=k, mmr_lambda=self._mmr_lambda
+        else:
+            results = results[:k]
+
+        out: list[RetrievedChunk] = []
+        for payload, score, _ in results:
+            text = _resolve_text(payload)
+            out.append(
+                RetrievedChunk(
+                    text=text,
+                    metadata=payload,
+                    score=score,
+                    provenance=_build_provenance(payload, score),
                 )
-            else:
-                results = results[:k]
-
-            out: list[RetrievedChunk] = []
-            for payload, score, _ in results:
-                text = _resolve_text(payload)
-                out.append(
-                    RetrievedChunk(
-                        text=text,
-                        metadata=payload,
-                        score=score,
-                        provenance=_build_provenance(payload, score),
-                    )
-                )
-
-            top_score = out[0]["score"] if out else 0.0
-            span.set_attribute("num_results", len(out))
-            span.set_attribute("top_score", top_score)
-
-        elapsed_ms = (time.perf_counter() - t0) * 1000
-        retrieval_latency.record(elapsed_ms)
-        retrieval_hit_counter.add(len(out))
+            )
         return out

@@ -2,9 +2,11 @@
 
 import json
 import logging
-import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+
+LOGS_DIR = Path("logs")
 
 
 class JSONFormatter(logging.Formatter):
@@ -25,12 +27,14 @@ class JSONFormatter(logging.Formatter):
 def configure_logging(
     level: int = logging.INFO,
     json_format: bool = True,
+    log_dir: Path | None = None,
 ) -> None:
-    """Configure logging with structured JSON output and default level.
+    """Configure logging to a timestamped file in logs/ (no stdout).
 
     Args:
         level: Logging level (default INFO).
         json_format: If True, use JSON formatter; otherwise use standard format.
+        log_dir: Directory for log files. Defaults to logs/.
     """
     root = logging.getLogger()
     root.setLevel(level)
@@ -39,7 +43,12 @@ def configure_logging(
     if root.handlers:
         return
 
-    handler = logging.StreamHandler(sys.stdout)
+    dir_path = log_dir if log_dir is not None else LOGS_DIR
+    dir_path.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = dir_path / f"log_{timestamp}.txt"
+
+    handler = logging.FileHandler(log_path, encoding="utf-8")
     handler.setLevel(level)
 
     if json_format:

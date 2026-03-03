@@ -57,3 +57,11 @@ You should see langchain, qdrant-client, pypdf, pytest, black, mypy.
 - Run tests: `pytest`
 - Format code: `black src/ tests/`
 - Type check: `mypy src/`
+
+
+
+# Backend
+uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Frontend (in a separate terminal)
+streamlit run streamlit_app.py

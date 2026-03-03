@@ -11,7 +11,8 @@ class Config:
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: Optional[str] = None
     collection_name: str = "911automate"
-    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"  # legacy; use ollama_embedding_model
+    ollama_embedding_model: str = "all-minilm"
     embedding_version: str = "v1"
     embedding_dim: int = 384
     top_k: int = 5
@@ -25,3 +26,5 @@ class Config:
     api_key: Optional[str] = None
     use_ollama_by_default: bool = True
     prompts_dir: str = "prompts"
+    # Agent warm on startup (background task, no blocking)
+    agent_warm_on_start: bool = True

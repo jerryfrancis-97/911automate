@@ -17,21 +17,18 @@ class Embedder:
     """Wraps LangChain embeddings for embed_texts(list[str]) -> list[list[float]]."""
 
     def __init__(self, config: Config | None = None, normalize: bool = True) -> None:
-        """Use config.embedding_model; normalize vectors for cosine similarity if normalize=True."""
+        """Use config.ollama_embedding_model; normalize vectors for cosine similarity if normalize=True."""
         self._config = config or Config()
         self._normalize = normalize
         self._embeddings = self._build_embeddings()
 
     def _build_embeddings(self):
-        """Build HuggingFaceEmbeddings from config.embedding_model."""
-        from langchain_huggingface import HuggingFaceEmbeddings
+        """Build OllamaEmbeddings from config.ollama_embedding_model."""
+        from langchain_ollama import OllamaEmbeddings
 
-        model = self._config.embedding_model
-        encode_kwargs = {"normalize_embeddings": True} if self._normalize else {}
-        return HuggingFaceEmbeddings(
-            model_name=model,
-            model_kwargs={"device": "cpu"},
-            encode_kwargs=encode_kwargs,
+        return OllamaEmbeddings(
+            base_url=self._config.ollama_base_url,
+            model=self._config.ollama_embedding_model,
         )
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:

@@ -2,7 +2,6 @@
 
 import json
 import re
-import time
 from typing import Any
 
 from src.rag.config import Config
@@ -138,13 +137,6 @@ class Agent:
                 "I don't have enough information to answer confidently. "
                 "I'm escalating to a human operator for assistance."
             )
-            from src.rag.observability import escalation_counter
-            escalation_counter.add(
-                1,
-                {"session_id": sess.session_id,
-                 "clarify_rounds": sess.clarify_rounds,
-                 "confidence": confidence},
-            )
         else:
             sys_prompt = self._prompt_handler.get_prompt("agent_system")
             messages = [
@@ -192,16 +184,8 @@ class Agent:
     # ------------------------------------------------------------------
 
     def _invoke_llm(self, messages: list, *, action: str = "") -> str:
-        """Call LLM wrapped in an OTel span with latency recording."""
-        from src.rag.observability import llm_latency, tracer
-
-        t0 = time.perf_counter()
-        with tracer.start_as_current_span("llm_call") as span:
-            span.set_attribute("action", action)
-            result = self._llm.invoke(messages)
-        elapsed_ms = (time.perf_counter() - t0) * 1000
-        llm_latency.record(elapsed_ms)
-        return result
+        """Call LLM."""
+        return self._llm.invoke(messages)
 
     @staticmethod
     def _session_from_dict(raw: dict) -> SessionState:

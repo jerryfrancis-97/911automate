@@ -25,11 +25,11 @@ def _make_vector(dim: int, seed: int) -> list[float]:
 
 @pytest.fixture
 def embedder() -> Embedder:
-    """Embedder with default Config. Skips if sentence-transformers unavailable."""
+    """Embedder with default Config. Skips if Ollama unavailable."""
     try:
         return Embedder(config=Config(), normalize=True)
     except Exception as e:
-        pytest.skip(f"sentence-transformers not available: {e}")
+        pytest.skip(f"Ollama not available: {e}")
 
 
 @pytest.fixture

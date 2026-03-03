@@ -32,6 +32,8 @@ class SessionStore(Protocol):
 
     def put(self, session: SessionState) -> None: ...
 
+    def list_ids(self) -> list[str]: ...
+
 
 class InMemorySessionStore:
     """Dict-backed session store suitable for single-process deployments."""
@@ -44,6 +46,9 @@ class InMemorySessionStore:
 
     def put(self, session: SessionState) -> None:
         self._sessions[session.session_id] = session
+
+    def list_ids(self) -> list[str]:
+        return list(self._sessions.keys())
 
 
 def get_or_create_session(

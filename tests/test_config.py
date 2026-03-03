@@ -23,6 +23,7 @@ def test_config_default_values() -> None:
     assert config.qdrant_api_key is None
     assert config.collection_name == "911automate"
     assert config.embedding_model == "sentence-transformers/all-MiniLM-L6-v2"
+    assert config.ollama_embedding_model == "all-minilm"
     assert config.embedding_dim == 384
     assert config.top_k == 5
     assert config.confidence_threshold == 0.7

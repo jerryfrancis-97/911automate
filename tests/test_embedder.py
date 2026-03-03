@@ -13,11 +13,11 @@ def test_embedder_importable() -> None:
 
 @pytest.fixture
 def embedder() -> Embedder:
-    """Embedder with default Config (HuggingFaceEmbeddings)."""
+    """Embedder with default Config (OllamaEmbeddings)."""
     try:
         return Embedder(config=Config(), normalize=True)
     except Exception as e:
-        pytest.skip(f"sentence-transformers not available: {e}")
+        pytest.skip(f"Ollama not available: {e}")
 
 
 def test_embed_texts_returns_vectors(embedder: Embedder) -> None:
