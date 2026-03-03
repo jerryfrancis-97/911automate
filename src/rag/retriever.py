@@ -1,6 +1,7 @@
 """Retriever that queries Qdrant and optionally re-ranks with MMR."""
 
 import logging
+import time
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -11,12 +12,34 @@ from src.rag.vectordb_qdrant import VectorDBQdrant
 logger = logging.getLogger(__name__)
 
 
+class ProvenanceInfo(TypedDict):
+    """Provenance metadata surfaced to the operator / UI."""
+
+    doc_id: str
+    page: int
+    chunk_index: int
+    source_path: str
+    score: float
+
+
 class RetrievedChunk(TypedDict):
-    """Retrieved chunk with text, metadata, and score."""
+    """Retrieved chunk with text, metadata, provenance, and score."""
 
     text: str
     metadata: dict[str, Any]
     score: float
+    provenance: ProvenanceInfo
+
+
+def _build_provenance(payload: dict[str, Any], score: float) -> ProvenanceInfo:
+    """Extract provenance fields from a Qdrant payload with safe defaults."""
+    return ProvenanceInfo(
+        doc_id=str(payload.get("doc_id", "")),
+        page=int(payload.get("page", 0)),
+        chunk_index=int(payload.get("chunk_index", 0)),
+        source_path=str(payload.get("source_path") or payload.get("source", "")),
+        score=score,
+    )
 
 
 class CalculateMMR:
@@ -37,8 +60,8 @@ class CalculateMMR:
         selected_vectors: list[list[float]],
         mmr_lambda: float,
     ) -> float:
-        """
-        Compute MMR score for a candidate.
+        """Compute MMR score for a candidate.
+
         mmr_score = (1 - lambda) * relevance - lambda * max_sim_to_selected
         """
         if not cand_vec:
@@ -71,10 +94,7 @@ def _mmr_select(
     top_k: int,
     mmr_lambda: float,
 ) -> list[tuple[dict[str, Any], float, list[float]]]:
-    """
-    Select top_k items using Maximal Marginal Relevance.
-    candidates: list of (payload, relevance_score, vector)
-    """
+    """Select top_k items using Maximal Marginal Relevance."""
     if top_k >= len(candidates):
         return candidates
     if top_k <= 0:
@@ -123,30 +143,58 @@ class Retriever:
         top_k: int | None = None,
         use_mmr: bool | None = None,
     ) -> list[RetrievedChunk]:
-        """
-        Retrieve chunks for query. Embeds query, searches Qdrant, optionally applies MMR.
-        Returns list of {text, metadata, score}.
-        """
+        """Retrieve chunks for *query*. Returns list of RetrievedChunk dicts."""
+        from src.rag.observability import (
+            retrieval_hit_counter,
+            retrieval_latency,
+            tracer,
+        )
+
         k = top_k if top_k is not None else self._config.top_k
         do_mmr = use_mmr if use_mmr is not None else self._use_mmr
         if k <= 0:
             return []
-        query_vec = self._embedder.embed_texts([query])
-        if not query_vec:
-            return []
-        query_vec = query_vec[0]
-        candidate_k = k * self._candidate_multiplier
-        results = self._vectordb.search_vector_with_vectors(query_vec, top_k=candidate_k)
-        if not results:
-            return []
-        if do_mmr and len(results) > k:
-            results = _mmr_select(
-                query_vec, results, top_k=k, mmr_lambda=self._mmr_lambda
+
+        t0 = time.perf_counter()
+        with tracer.start_as_current_span("retrieve") as span:
+            span.set_attribute("query", query[:200])
+            span.set_attribute("top_k", k)
+
+            query_vec = self._embedder.embed_texts([query])
+            if not query_vec:
+                return []
+            query_vec = query_vec[0]
+            candidate_k = k * self._candidate_multiplier
+            results = self._vectordb.search_vector_with_vectors(
+                query_vec, top_k=candidate_k
             )
-        else:
-            results = results[:k]
-        out: list[RetrievedChunk] = []
-        for payload, score, _ in results:
-            text = _resolve_text(payload)
-            out.append({"text": text, "metadata": payload, "score": score})
+            if not results:
+                span.set_attribute("num_results", 0)
+                return []
+            if do_mmr and len(results) > k:
+                results = _mmr_select(
+                    query_vec, results, top_k=k, mmr_lambda=self._mmr_lambda
+                )
+            else:
+                results = results[:k]
+
+            out: list[RetrievedChunk] = []
+            for payload, score, _ in results:
+                text = _resolve_text(payload)
+                out.append(
+                    RetrievedChunk(
+                        text=text,
+                        metadata=payload,
+                        score=score,
+                        provenance=_build_provenance(payload, score),
+                    )
+                )
+
+            top_score = out[0]["score"] if out else 0.0
+            span.set_attribute("num_results", len(out))
+            span.set_attribute("top_score", top_score)
+
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+        retrieval_latency.record(elapsed_ms)
+        retrieval_hit_counter.add(len(out))
         return out

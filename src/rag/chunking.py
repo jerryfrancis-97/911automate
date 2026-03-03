@@ -1,5 +1,6 @@
 """Chunk documents using MarkdownHeaderTextSplitter + RecursiveCharacterTextSplitter."""
 
+import hashlib
 from pathlib import Path
 
 try:
@@ -8,6 +9,17 @@ except ImportError:
     from langchain.schema import Document
 
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
+
+
+def deterministic_chunk_id(doc_id: str, page: int, chunk_index: int) -> str:
+    """Return a deterministic, collision-resistant ID for a chunk.
+
+    Uses SHA-256 of ``doc_id:page:chunk_index`` truncated to 16 hex chars.
+    The same inputs always produce the same ID, making re-ingestion
+    idempotent when used as the Qdrant point ID.
+    """
+    raw = f"{doc_id}:{page}:{chunk_index}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
 def create_chunks(
@@ -54,8 +66,9 @@ def create_chunks(
                 "doc_id": doc_id,
                 "page": page,
                 "chunk_index": chunk_index,
+                "chunk_id": deterministic_chunk_id(doc_id, page, chunk_index),
                 "source": source,
-                "parent_doc_id": source,  # path to parent file (or URL)
+                "parent_doc_id": source,
             }
             meta.update(sub_chunk.metadata)
             chunk_doc = Document(page_content=sub_chunk.page_content, metadata=meta)

@@ -12,6 +12,7 @@ class Config:
     qdrant_api_key: Optional[str] = None
     collection_name: str = "911automate"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_version: str = "v1"
     embedding_dim: int = 384
     top_k: int = 5
     confidence_threshold: float = 0.7

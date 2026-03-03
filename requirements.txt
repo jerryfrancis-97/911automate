@@ -17,12 +17,18 @@ langchain-text-splitters>=0.2.0
 
 # For HuggingFaceEmbeddings (embedder)
 sentence-transformers>=2.2.0
+langchain-huggingface>=0.1.0
 
 # LLM adapters (Ollama, OpenAI-compatible API)
 langchain-ollama>=0.2.0
 langchain-openai>=0.2.0
 
+# Observability (OpenTelemetry)
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
+
 # Dev
 pytest>=7.0.0
-black>=23.0.0
+yapf>=0.40.0
 mypy>=1.0.0
+fpdf2>=2.7.0

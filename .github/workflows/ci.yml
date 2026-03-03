@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  lint:
+    name: Lint (yapf)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install yapf
+        run: pip install yapf
+
+      - name: Check formatting
+        run: yapf --diff --recursive src/ tests/
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Run unit tests
+        # Only run tests that are fully mocked and require no external services
+        # (Qdrant, sentence-transformers model downloads, Ollama, network).
+        # Integration tests live in the other test_*.py files and are skipped here.
+        run: |
+          pytest \
+            tests/test_agent.py \
+            tests/test_guardrails.py \
+            tests/test_config.py \
+            tests/test_chunking.py \
+            tests/test_logging_setup.py \
+            tests/test_cli.py \
+            tests/test_session_state.py \
+            tests/test_observability.py \
+            tests/test_qdrant_schema.py \
+            tests/test_idempotent_ingestion.py \
+            -v

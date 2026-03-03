@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from src.rag.agent import Agent, AgentSession, _extract_llm_confidence
+from src.rag.agent import Agent, _extract_llm_confidence
 from src.rag.config import Config
 from src.rag.llm_adapters import APILLM, OllamaLLM, get_llm
 from src.rag.prompt_handler import PromptHandler
-from src.rag.retriever import RetrievedChunk
+from src.rag.retriever import ProvenanceInfo, RetrievedChunk
 
 
 # --- Mocks ---
@@ -25,12 +25,14 @@ class MockRetriever:
 
 
 class MockLLM:
-    """LLM that returns a fixed string."""
+    """LLM that returns a fixed string and tracks invocation count."""
 
     def __init__(self, response: str = "Mock response") -> None:
         self._response = response
+        self.call_count = 0
 
     def invoke(self, messages: list) -> str:
+        self.call_count += 1
         return self._response
 
 
@@ -39,12 +41,13 @@ class MockLLM:
 
 def test_agent_importable() -> None:
     """Agent, PromptHandler, LLM adapters are importable."""
-    from src.rag.agent import Agent, AgentSession
+    from src.rag.agent import Agent
     from src.rag.llm_adapters import APILLM, OllamaLLM
     from src.rag.prompt_handler import PromptHandler
+    from src.rag.session_state import SessionState
 
     assert Agent is not None
-    assert AgentSession is not None
+    assert SessionState is not None
     assert PromptHandler is not None
     assert OllamaLLM is not None
     assert APILLM is not None
@@ -99,7 +102,7 @@ def test_clarify_then_escalate() -> None:
         config=config,
         llm=MockLLM("Clarifying question?"),
     )
-    session: AgentSession = {"history": [], "clarify_rounds": 0}
+    session = {"history": [], "clarify_rounds": 0}
     # First call: clarify
     r1 = agent.handle("Q1", session=session)
     assert r1["action"] == "clarify"
@@ -173,3 +176,103 @@ def test_extract_llm_confidence() -> None:
     assert _extract_llm_confidence('Some text {"confidence": 0.5} more') == 0.5
     assert _extract_llm_confidence("Plain text answer") is None
     assert _extract_llm_confidence("") is None
+
+
+# --- Agent loop tests ---
+
+
+def _make_loop_agent(llm: MockLLM) -> Agent:
+    """Create an Agent with high-confidence chunks so handle() always answers."""
+    retriever = MockRetriever(
+        chunks=[{"text": "Relevant context.", "metadata": {}, "score": 0.95}]
+    )
+    return Agent(retriever=retriever, llm=llm)
+
+
+def test_loop_quit_no_llm_call(monkeypatch, capsys) -> None:
+    """Typing 'quit' exits the loop, prints QUIT_RESPONSE, and never calls LLM."""
+    llm = MockLLM("Should not be returned")
+    agent = _make_loop_agent(llm)
+    monkeypatch.setattr("builtins.input", lambda _: "quit")
+
+    agent.run_agent_loop()
+
+    assert llm.call_count == 0
+    captured = capsys.readouterr()
+    assert Agent.QUIT_RESPONSE in captured.out
+
+
+def test_loop_responds_then_quits(monkeypatch, capsys) -> None:
+    """Agent responds to a real question, then exits cleanly on 'quit'."""
+    llm = MockLLM("Here is my answer.")
+    agent = _make_loop_agent(llm)
+    inputs = iter(["What is the protocol?", "quit"])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+    agent.run_agent_loop()
+
+    assert llm.call_count == 1
+    captured = capsys.readouterr()
+    assert "Here is my answer." in captured.out
+    assert Agent.QUIT_RESPONSE in captured.out
+
+
+# --- Provenance tests ---
+
+
+def _chunk_with_provenance(
+    text: str, score: float, doc_id: str = "doc1", page: int = 1,
+    chunk_index: int = 0, source_path: str = "/data/doc1.pdf",
+) -> RetrievedChunk:
+    """Build a RetrievedChunk with full provenance metadata."""
+    meta = {
+        "doc_id": doc_id, "page": page, "chunk_index": chunk_index,
+        "source_path": source_path,
+    }
+    return RetrievedChunk(
+        text=text, metadata=meta, score=score,
+        provenance=ProvenanceInfo(
+            doc_id=doc_id, page=page, chunk_index=chunk_index,
+            source_path=source_path, score=score,
+        ),
+    )
+
+
+def test_handle_returns_sources_key() -> None:
+    """handle() result contains a 'sources' list."""
+    retriever = MockRetriever(chunks=[
+        _chunk_with_provenance("Context A", 0.9, doc_id="d1", page=1, chunk_index=0),
+    ])
+    agent = Agent(retriever=retriever, llm=MockLLM("Answer"))
+    result = agent.handle("question")
+    assert "sources" in result
+    assert isinstance(result["sources"], list)
+    assert len(result["sources"]) == 1
+
+
+def test_provenance_fields_present_in_sources() -> None:
+    """Each source dict has doc_id, page, chunk_index, source_path, score."""
+    retriever = MockRetriever(chunks=[
+        _chunk_with_provenance("A", 0.92, "doc1", 2, 5, "/data/doc1.pdf"),
+        _chunk_with_provenance("B", 0.88, "doc2", 1, 0, "/data/doc2.pdf"),
+    ])
+    agent = Agent(retriever=retriever, llm=MockLLM("Answer"))
+    result = agent.handle("question")
+    for src in result["sources"]:
+        assert "doc_id" in src
+        assert "page" in src
+        assert "chunk_index" in src
+        assert "source_path" in src
+        assert "score" in src
+    assert result["sources"][0]["doc_id"] == "doc1"
+    assert result["sources"][0]["page"] == 2
+    assert result["sources"][1]["source_path"] == "/data/doc2.pdf"
+
+
+def test_blocked_message_has_empty_sources() -> None:
+    """Banned content returns sources=[]."""
+    retriever = MockRetriever(chunks=[])
+    agent = Agent(retriever=retriever, llm=MockLLM("x"))
+    result = agent.handle("fuck this", session={})
+    assert result["action"] == "blocked"
+    assert result["sources"] == []

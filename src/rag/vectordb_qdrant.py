@@ -7,6 +7,46 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from src.rag.config import Config
 
+_TEXT_PREVIEW_MAX = 200
+
+
+class QdrantPayload(TypedDict, total=False):
+    """Typed schema for Qdrant point payloads.
+
+    All fields are optional at the TypedDict level so that legacy data
+    without every key can still be read back, but ``validate_payload``
+    ensures every key is present before upsert.
+    """
+
+    chunk_id: str
+    doc_id: str
+    page: int
+    chunk_index: int
+    text_preview: str
+    source_path: str
+    embedding_version: str
+
+
+def validate_payload(
+    meta: dict[str, Any],
+    embedding_version: str = "v1",
+) -> QdrantPayload:
+    """Normalise a metadata dict into a ``QdrantPayload``.
+
+    Missing keys are filled with sensible defaults; ``text_preview`` is
+    truncated to *_TEXT_PREVIEW_MAX* characters.
+    """
+    text = str(meta.get("text") or meta.get("page_content") or "")
+    return QdrantPayload(
+        chunk_id=str(meta.get("chunk_id", "")),
+        doc_id=str(meta.get("doc_id", "")),
+        page=int(meta.get("page", 0)),
+        chunk_index=int(meta.get("chunk_index", 0)),
+        text_preview=text[:_TEXT_PREVIEW_MAX],
+        source_path=str(meta.get("source_path") or meta.get("source", "")),
+        embedding_version=str(meta.get("embedding_version", embedding_version)),
+    )
+
 
 class ChunkItem(TypedDict):
     """Chunk item for upsert: id, vector, and metadata."""
@@ -121,11 +161,14 @@ def _vector(chunk: ChunkItem | dict | Any) -> list[float]:
 
 
 def _payload(chunk: ChunkItem | dict | Any) -> dict[str, Any]:
-    """Extract metadata as payload from chunk. Ensures JSON-serializable values."""
+    """Extract metadata as payload, validate against QdrantPayload schema, and merge."""
     meta = chunk["metadata"] if isinstance(chunk, dict) else getattr(chunk, "metadata")
     if not isinstance(meta, dict):
-        return {}
-    return {k: _to_serializable(v) for k, v in meta.items()}
+        return dict(validate_payload({}))
+    serialized = {k: _to_serializable(v) for k, v in meta.items()}
+    validated = dict(validate_payload(serialized))
+    validated.update(serialized)
+    return validated
 
 
 def _to_serializable(val: Any) -> Any:
