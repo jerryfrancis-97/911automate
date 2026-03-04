@@ -31,6 +31,7 @@ def create_chunks(
     """Split documents into chunks using MarkdownHeaderTextSplitter + RecursiveCharacterTextSplitter.
 
     Saves chunks to output_dir/{doc_id}/chunk_{chunk_index}.md. Returns chunk Documents.
+    Validates that all produced chunks have page_content length <= chunk_size.
     """
     output_dir = Path(output_dir)
     headers_to_split_on = [
@@ -78,5 +79,21 @@ def create_chunks(
             out_path.write_text(sub_chunk.page_content, encoding="utf-8")
 
             chunk_index += 1
+
+    # Validate all chunks are within chunk_size (allow small tolerance for splitter edge cases)
+    tolerance = 10
+    over_limit = [
+        (i, len(c.page_content))
+        for i, c in enumerate(all_chunks)
+        if len(c.page_content) > chunk_size + tolerance
+    ]
+    if over_limit:
+        details = ", ".join(f"chunk_{i}={n} chars" for i, n in over_limit[:5])
+        if len(over_limit) > 5:
+            details += f" ... and {len(over_limit) - 5} more"
+        raise ValueError(
+            f"Chunks exceed chunk_size={chunk_size}: {details}. "
+            "Reduce chunk_size in config or adjust document structure."
+        )
 
     return all_chunks
