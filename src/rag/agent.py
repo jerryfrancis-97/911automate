@@ -2,8 +2,10 @@
 
 import json
 import re
+import time
 from typing import Any
 
+from api.metrics import record_rag_llm_latency, record_rag_retrieval_latency
 from src.rag.config import Config
 from src.rag.guardrails import check_for_banned_content, should_escalate
 from src.rag.llm_adapters import OllamaLLM, APILLM, get_llm
@@ -94,7 +96,10 @@ class Agent:
             self._session_store.put(sess)
             return self._result("blocked", refusal, 0.0, sess, sources=[])
 
+        start = time.perf_counter()
         chunks = self._retriever.retrieve(question)
+        record_rag_retrieval_latency(time.perf_counter() - start)
+
         sources: list[ProvenanceInfo] = [
             c["provenance"] for c in chunks if "provenance" in c
         ]
@@ -185,7 +190,10 @@ class Agent:
 
     def _invoke_llm(self, messages: list, *, action: str = "") -> str:
         """Call LLM."""
-        return self._llm.invoke(messages)
+        start = time.perf_counter()
+        result = self._llm.invoke(messages)
+        record_rag_llm_latency(time.perf_counter() - start)
+        return result
 
     @staticmethod
     def _session_from_dict(raw: dict) -> SessionState:

@@ -1,0 +1,7 @@
+# Example Prometheus scrape config for 911automate RAG API
+scrape_configs:
+  - job_name: "911automate"
+    static_configs:
+      - targets: ["localhost:8000"]
+    metrics_path: /metrics
+    scrape_interval: 15s

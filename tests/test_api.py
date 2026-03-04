@@ -68,6 +68,26 @@ def _make_mock_agent(**handle_kwargs):
 
 
 # ---------------------------------------------------------------------------
+# GET /metrics
+# ---------------------------------------------------------------------------
+
+
+def test_metrics_endpoint():
+    """GET /metrics returns 200 and Prometheus exposition format with RAG metrics."""
+    p1, p2, p3 = _lifespan_patches()
+    with p1, p2, p3:
+        with TestClient(app) as client:
+            resp = client.get("/metrics")
+    assert resp.status_code == 200
+    body = resp.text
+    assert "rag_requests_total" in body
+    assert "rag_errors_total" in body
+    assert "rag_request_latency_seconds" in body
+    assert "rag_retrieval_latency_seconds" in body
+    assert "rag_llm_latency_seconds" in body
+
+
+# ---------------------------------------------------------------------------
 # GET /sessions
 # ---------------------------------------------------------------------------
 

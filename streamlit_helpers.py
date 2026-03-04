@@ -1,6 +1,6 @@
 """Helpers for streamlit_app (testable without Streamlit)."""
 
-CHAT_TIMEOUT = 180
+CHAT_TIMEOUT = 300
 DEFAULT_TIMEOUT = 30
 
 

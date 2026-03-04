@@ -12,17 +12,27 @@ Environment variables:
 
 from __future__ import annotations
 
+import time
+import uuid
+
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from qdrant_client import QdrantClient
 
 from src.rag.agent import Agent
 from src.rag.config import Config
+from src.rag.rag_logger import log_rag_request
 from src.rag.session_state import SessionStore, get_or_create_session
 
 from api.async_utils import run_in_thread
 from api.deps import get_agent, get_session_store, lifespan
+from api.metrics import (
+    get_metrics_content,
+    increment_rag_errors,
+    increment_rag_requests,
+    record_rag_request_latency,
+)
 from api.models import (
     ChatRequest,
     ChatResponse,
@@ -135,26 +145,70 @@ def get_session(
     return _session_to_response(sess)
 
 
+@app.get("/metrics")
+def metrics() -> Response:
+    """Prometheus scrape endpoint. Returns metrics in exposition format."""
+    body, content_type = get_metrics_content()
+    return Response(content=body, media_type=content_type)
+
+
+def _sources_to_log_dicts(sources: list[dict]) -> list[dict]:
+    """Convert sources to dicts for JSONL logging."""
+    return [
+        {
+            "chunk_id": f"{s.get('doc_id', '')}:{s.get('chunk_index', 0)}",
+            "doc_id": s.get("doc_id", ""),
+            "page": s.get("page", 0),
+            "snippet": s.get("source_path", ""),
+            "score": s.get("score", 0.0),
+        }
+        for s in sources
+    ]
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(
     body: ChatRequest,
     agent: Agent = Depends(get_agent),
 ) -> ChatResponse:
-    result = await run_in_thread(
-        agent.handle,
-        body.question,
-        session_id=body.session_id,
-    )
+    increment_rag_requests()
+    request_id = str(uuid.uuid4())
+    start = time.perf_counter()
+    try:
+        result = await run_in_thread(
+            agent.handle,
+            body.question,
+            session_id=body.session_id,
+        )
+    except Exception:
+        increment_rag_errors()
+        raise
+    finally:
+        record_rag_request_latency(time.perf_counter() - start)
 
     escalation_reason: str | None = None
     if result["action"] == "escalate":
         escalation_reason = result["response"]
 
+    # Structured logging for RAG evaluation (non-blocking, never fails request)
+    sources = result.get("sources", [])
+    log_rag_request(
+        question=body.question,
+        retrieved_chunks=_sources_to_log_dicts(sources),
+        retrieval_scores=[s.get("score", 0.0) for s in sources],
+        final_answer=result["response"],
+        used_facts=_sources_to_log_dicts(sources),
+        confidence=result["confidence"],
+        escalated=result["action"] == "escalate",
+        latency_ms=int((time.perf_counter() - start) * 1000),
+        request_id=request_id,
+    )
+
     return ChatResponse(
         action=result["action"],
         answer=result["response"],
         confidence=result["confidence"],
-        used_facts=_sources_to_facts(result.get("sources", [])),
+        used_facts=_sources_to_facts(sources),
         escalation_reason=escalation_reason,
     )
 
