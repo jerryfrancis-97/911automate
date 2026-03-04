@@ -10,11 +10,14 @@ class Config:
 
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: Optional[str] = None
-    collection_name: str = "911automate"
+    collection_name: str = "911automate_test_live"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"  # legacy; use ollama_embedding_model
     ollama_embedding_model: str = "all-minilm"
     embedding_version: str = "v1"
     embedding_dim: int = 384
+    # Chunking for document splitting
+    chunk_size: int = 400
+    chunk_overlap: int = 50
     top_k: int = 5
     confidence_threshold: float = 0.7
     max_clarify_rounds: int = 3
