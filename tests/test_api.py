@@ -522,7 +522,7 @@ def test_probe_qdrant_failure():
 @pytest.mark.asyncio
 async def test_probe_llm_ollama_ok():
     from api.main import _probe_llm
-    from src.rag.config import Config
+    from src.rag.core.config import Config
 
     config = Config(ollama_base_url="http://localhost:11434")
     mock_resp = MagicMock()
@@ -542,7 +542,7 @@ async def test_probe_llm_ollama_ok():
 @pytest.mark.asyncio
 async def test_probe_llm_api_url_ok():
     from api.main import _probe_llm
-    from src.rag.config import Config
+    from src.rag.core.config import Config
 
     config = Config(api_base_url="https://api.example.com/v1")
     mock_resp = MagicMock()
@@ -562,7 +562,7 @@ async def test_probe_llm_api_url_ok():
 @pytest.mark.asyncio
 async def test_probe_llm_connection_error():
     from api.main import _probe_llm
-    from src.rag.config import Config
+    from src.rag.core.config import Config
 
     config = Config()
 

@@ -1,30 +1,14 @@
 """Qdrant vector database wrapper for upserting chunks and searching by vector."""
 
-from typing import Any, Iterable, TypedDict
+from typing import Any, Iterable
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
-from src.rag.config import Config
+from src.rag.core.config import Config
+from src.rag.core.types import ChunkItem, QdrantPayload
 
 _TEXT_PREVIEW_MAX = 200
-
-
-class QdrantPayload(TypedDict, total=False):
-    """Typed schema for Qdrant point payloads.
-
-    All fields are optional at the TypedDict level so that legacy data
-    without every key can still be read back, but ``validate_payload``
-    ensures every key is present before upsert.
-    """
-
-    chunk_id: str
-    doc_id: str
-    page: int
-    chunk_index: int
-    text_preview: str
-    source_path: str
-    embedding_version: str
 
 
 def validate_payload(
@@ -48,20 +32,12 @@ def validate_payload(
     )
 
 
-class ChunkItem(TypedDict):
-    """Chunk item for upsert: id, vector, and metadata."""
-
-    id: str | int
-    vector: list[float]
-    metadata: dict[str, Any]
-
-
 class VectorDBQdrant:
     """Qdrant wrapper for upserting chunks and searching by vector."""
 
-    def __init__(self, config: Config | None = None) -> None:
+    def __init__(self, config: Config) -> None:
         """Initialize with Config. Uses qdrant_url, qdrant_api_key, collection_name, embedding_dim."""
-        self._config = config or Config()
+        self._config = config
         kwargs: dict[str, Any] = {"url": self._config.qdrant_url}
         if self._config.qdrant_api_key:
             kwargs["api_key"] = self._config.qdrant_api_key

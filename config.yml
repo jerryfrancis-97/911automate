@@ -1,0 +1,35 @@
+# 911automate RAG configuration
+# Override with env vars: QDRANT_URL, OLLAMA_URL, CONFIG_PATH, etc.
+
+qdrant_url: "http://localhost:6333"
+qdrant_api_key: null
+collection_name: "911automate"
+embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+ollama_embedding_model: "all-minilm"
+embedding_version: "v1"
+embedding_dim: 384
+
+# Chunking
+chunk_size: 400
+chunk_overlap: 50
+
+# Retrieval and agent
+top_k: 5
+confidence_threshold: 0.7
+max_clarify_rounds: 2
+eval_mode: false  # true = never escalate, keep suggesting responses for RAG evals
+
+# LLM
+ollama_base_url: "http://localhost:11434"
+ollama_model: "llama3.2"
+api_base_url: null
+api_model: "gpt-4o-mini"
+api_key: null
+use_ollama_by_default: true
+
+# Paths
+prompts_dir: "prompts"
+prompts_file: "prompts/system_prompts.yaml"
+
+# API
+agent_warm_on_start: true

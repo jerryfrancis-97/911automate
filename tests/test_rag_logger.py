@@ -8,14 +8,14 @@ from unittest.mock import patch
 
 import pytest
 
-from src.rag.rag_logger import log_rag_request
+from src.rag.observability.rag_logger import log_rag_request
 
 
 def test_log_rag_request_writes_valid_jsonl(tmp_path: Path) -> None:
     """log_rag_request writes one valid JSON line with expected keys."""
-    with patch("src.rag.rag_logger._RAG_LOGS_DIR", tmp_path):
+    with patch("src.rag.observability.rag_logger._RAG_LOGS_DIR", tmp_path):
         # Reset module state so it uses our patched dir
-        import src.rag.rag_logger as m
+        import src.rag.observability.rag_logger as m
         m._log_file = None
 
         log_rag_request(

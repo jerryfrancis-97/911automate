@@ -77,6 +77,16 @@ def record_rag_llm_latency(seconds: float) -> None:
     rag_llm_latency_seconds.observe(seconds)
 
 
+class PrometheusMetricsRecorder:
+    """Implements MetricsRecorder protocol for injection into Agent. No api → src dependency."""
+
+    def record_retrieval_latency(self, seconds: float) -> None:
+        record_rag_retrieval_latency(seconds)
+
+    def record_llm_latency(self, seconds: float) -> None:
+        record_rag_llm_latency(seconds)
+
+
 def get_metrics_content() -> tuple[bytes, str]:
     """Return (body, content_type) for /metrics endpoint.
 

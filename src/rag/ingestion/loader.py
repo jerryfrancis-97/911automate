@@ -1,7 +1,7 @@
 """PDF ingestion with Docling or PyPDF fallback."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 try:
     from langchain_core.documents import Document
@@ -10,6 +10,14 @@ except ImportError:
 from pypdf import PdfReader
 from langchain_community.document_loaders import OnlinePDFLoader
 import pymupdf4llm
+
+
+class DocLoader(Protocol):
+    """Protocol for document loaders. Align all loaders to this interface."""
+
+    def load_documents(
+        self, path: str | Path, doc_id: str, **kwargs: Any
+    ) -> list[Document]: ...
 
 
 _DOCLING_AVAILABLE: bool | None = None
@@ -48,7 +56,7 @@ class DoclingParserAdapter:
         if _docling_available():
             print("Using docling")
             return self._parse_with_docling(path, num_pages)
-        
+
         print("Using pypdf")
         return self._parse_with_pypdf(reader, num_pages)
 
@@ -150,6 +158,7 @@ class URLDocumentLoader:
 
 class PyMuPDFDocumentLoader:
     """Loads PDFs using pymupdf4llm (distinct from DocumentLoader which uses Docling/PyPDF)."""
+
     def __init__(self):
         """
         PyMuPDFDocumentLoader does not require initialization arguments.

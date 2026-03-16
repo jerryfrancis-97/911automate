@@ -79,7 +79,7 @@ def test_save_markdown_files_creates_files(sample_pdf_path: Path) -> None:
             assert isinstance(content, str)
 
 
-@patch("src.rag.ingestion._docling_available", return_value=False)
+@patch("src.rag.ingestion.loader._docling_available", return_value=False)
 def test_fallback_pypdf_when_no_docling(mock_available: object, sample_pdf_path: Path) -> None:
     """When docling unavailable, PyPDF fallback produces valid page dicts."""
     adapter = DoclingParserAdapter()

@@ -53,6 +53,7 @@ class ReadyResponse(BaseModel):
     embedder_ready: bool = False
     retriever_ready: bool = False
     error: str | None = None
+    eval_mode: bool = False  # true = manual escalation disabled
 
 
 class SessionsListResponse(BaseModel):

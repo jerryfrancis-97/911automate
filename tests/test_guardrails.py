@@ -2,13 +2,13 @@
 
 import pytest
 
-from src.rag.config import Config
-from src.rag.guardrails import (
+from src.rag.core.config import Config
+from src.rag.agent.guardrails import (
     check_for_banned_content,
     should_escalate,
     system_prompt,
 )
-from src.rag.prompt_handler import PromptHandler
+from src.rag.agent.prompt_handler import PromptHandler
 
 
 # ---------------------------------------------------------------------------
@@ -27,7 +27,7 @@ def test_system_prompt_returns_string():
 
 def test_system_prompt_fallback():
     """When the prompt file is missing, a sensible default is returned."""
-    handler = PromptHandler(prompts_dir="nonexistent_dir_for_testing")
+    handler = PromptHandler(prompts_path="nonexistent/prompts_for_testing.yaml")
     result = system_prompt(prompt_handler=handler)
     assert isinstance(result, str)
     assert len(result) > 0
@@ -91,3 +91,9 @@ def test_should_escalate_false_rounds_remaining():
     """Low confidence but rounds still remaining -> no escalation yet."""
     assert should_escalate(confidence=0.3, clarify_rounds=0, config=_CFG) is False
     assert should_escalate(confidence=0.5, clarify_rounds=2, config=_CFG) is False
+
+
+def test_should_escalate_false_in_eval_mode():
+    """When eval_mode is True, never escalate."""
+    eval_cfg = Config(confidence_threshold=0.7, max_clarify_rounds=2, eval_mode=True)
+    assert should_escalate(confidence=0.3, clarify_rounds=5, config=eval_cfg) is False

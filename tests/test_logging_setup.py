@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from src.rag.logging_setup import JSONFormatter, configure_logging
+from src.rag.observability.logging_setup import JSONFormatter, configure_logging
 
 
 def test_configure_logging_importable() -> None:
     """configure_logging is importable from src.rag.logging_setup."""
-    from src.rag.logging_setup import configure_logging as fn
+    from src.rag.observability.logging_setup import configure_logging as fn
 
     assert fn is not None
 

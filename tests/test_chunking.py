@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.rag.chunking import create_chunks
+from src.rag.ingestion.chunking import create_chunks
 from src.rag.ingestion import PyMuPDFDocumentLoader
 
 try:
@@ -107,6 +107,30 @@ def test_chunk_sizes_reasonable_and_overlapping(sample_documents: list) -> None:
             break
     # If no exact match, splitter may use different boundaries; multi-chunk output is OK
     assert len(chunks) >= 2, "Expected multiple chunks with small chunk_size"
+
+
+def test_oversized_chunks_truncated() -> None:
+    """Chunks exceeding chunk_size are truncated to chunk_size, not raised."""
+    chunk_size = 50
+    # No separators: splitter may produce one chunk larger than chunk_size
+    long_text = "x" * 150
+    docs = [
+        Document(
+            page_content=long_text,
+            metadata={"doc_id": "trunc_test", "page": 1, "source": "/fake/source"},
+        )
+    ]
+    chunks = create_chunks(
+        docs,
+        chunk_size=chunk_size,
+        chunk_overlap=10,
+        output_dir=TEST_OUTPUT_DIR,
+    )
+    assert len(chunks) > 0
+    for chunk in chunks:
+        assert len(chunk.page_content) <= chunk_size, (
+            f"Chunk length {len(chunk.page_content)} exceeds {chunk_size}"
+        )
 
 
 def test_chunks_saved_to_output_dir(sample_documents: list) -> None:

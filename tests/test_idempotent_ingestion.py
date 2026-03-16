@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.rag.chunking import deterministic_chunk_id
+from src.rag.ingestion.chunking import deterministic_chunk_id
 
 
 # ---------------------------------------------------------------------------

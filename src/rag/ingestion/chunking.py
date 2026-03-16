@@ -80,7 +80,6 @@ def create_chunks(
 
             chunk_index += 1
 
-    # Validate all chunks are within chunk_size (allow small tolerance for splitter edge cases)
     tolerance = 10
     over_limit = [
         (i, len(c.page_content))

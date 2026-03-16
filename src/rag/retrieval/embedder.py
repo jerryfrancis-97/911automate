@@ -2,7 +2,7 @@
 
 import math
 
-from src.rag.config import Config
+from src.rag.core.config import Config
 
 
 def _l2_normalize(vec: list[float]) -> list[float]:
@@ -16,9 +16,9 @@ def _l2_normalize(vec: list[float]) -> list[float]:
 class Embedder:
     """Wraps LangChain embeddings for embed_texts(list[str]) -> list[list[float]]."""
 
-    def __init__(self, config: Config | None = None, normalize: bool = True) -> None:
+    def __init__(self, config: Config, normalize: bool = True) -> None:
         """Use config.ollama_embedding_model; normalize vectors for cosine similarity if normalize=True."""
-        self._config = config or Config()
+        self._config = config
         self._normalize = normalize
         self._embeddings = self._build_embeddings()
 

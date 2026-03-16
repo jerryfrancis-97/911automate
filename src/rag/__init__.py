@@ -1,77 +1,87 @@
-"""RAG module for 911automate."""
+"""RAG module for 911automate.
 
-# Imports are guarded so that missing optional dependencies (e.g. qdrant-client)
-# don't prevent the package from being partially usable.
+Imports are guarded so that missing optional dependencies (e.g. qdrant-client)
+don't prevent the package from being partially usable.
+"""
 
 __all__: list[str] = []
 
 
-def _safe_import(import_fn: callable, names: list[str]) -> None:
+def _safe(fn) -> None:
     try:
-        import_fn()
+        fn()
     except (ImportError, ModuleNotFoundError):
         pass
 
 
-def _import_config():
-    from src.rag.config import Config  # noqa: F401
-    globals()["Config"] = Config
-    __all__.append("Config")
+def _core():
+    from src.rag.core.config import Config
+    from src.rag.core.types import ChunkItem, ProvenanceInfo, QdrantPayload, RetrievedChunk
 
-def _import_guardrails():
-    from src.rag.guardrails import check_for_banned_content, should_escalate, system_prompt  # noqa: F401
-    globals()["check_for_banned_content"] = check_for_banned_content
-    globals()["should_escalate"] = should_escalate
-    globals()["system_prompt"] = system_prompt
-    __all__.extend(["check_for_banned_content", "should_escalate", "system_prompt"])
+    for name in ("Config", "ChunkItem", "ProvenanceInfo", "QdrantPayload", "RetrievedChunk"):
+        globals()[name] = locals()[name]
+        __all__.append(name)
 
-def _import_prompt_handler():
-    from src.rag.prompt_handler import PromptHandler  # noqa: F401
+
+def _guardrails():
+    from src.rag.agent.guardrails import check_for_banned_content, should_escalate, system_prompt
+
+    for name in ("check_for_banned_content", "should_escalate", "system_prompt"):
+        globals()[name] = locals()[name]
+        __all__.append(name)
+
+
+def _prompt_handler():
+    from src.rag.agent.prompt_handler import PromptHandler
+
     globals()["PromptHandler"] = PromptHandler
     __all__.append("PromptHandler")
 
-def _import_llm_adapters():
-    from src.rag.llm_adapters import APILLM, OllamaLLM, get_llm  # noqa: F401
-    globals()["APILLM"] = APILLM
-    globals()["OllamaLLM"] = OllamaLLM
-    globals()["get_llm"] = get_llm
-    __all__.extend(["APILLM", "OllamaLLM", "get_llm"])
 
-# Chunking is NOT eagerly imported — it pulls in langchain_text_splitters → sentence_transformers
-# → transformers (30+ s). Use "from src.rag.chunking import create_chunks" when needed.
+def _llm_adapters():
+    from src.rag.agent.llm_adapters import APILLM, LLM, OllamaLLM, get_llm
 
-def _import_embedder():
-    from src.rag.embedder import Embedder  # noqa: F401
+    for name in ("APILLM", "LLM", "OllamaLLM", "get_llm"):
+        globals()[name] = locals()[name]
+        __all__.append(name)
+
+
+# Chunking is NOT eagerly imported — it pulls in langchain_text_splitters
+# -> sentence_transformers -> transformers (30+ s).
+# Use "from src.rag.ingestion.chunking import create_chunks" when needed.
+
+
+def _embedder():
+    from src.rag.retrieval.embedder import Embedder
+
     globals()["Embedder"] = Embedder
     __all__.append("Embedder")
 
-def _import_retriever():
-    from src.rag.retriever import CalculateMMR, RetrievedChunk, Retriever  # noqa: F401
-    globals()["CalculateMMR"] = CalculateMMR
-    globals()["RetrievedChunk"] = RetrievedChunk
+
+def _retriever():
+    from src.rag.retrieval.retriever import Retriever
+    from src.rag.core.types import RetrievedChunk
+
     globals()["Retriever"] = Retriever
-    __all__.extend(["CalculateMMR", "RetrievedChunk", "Retriever"])
+    globals()["RetrievedChunk"] = RetrievedChunk
+    __all__.extend(["Retriever", "RetrievedChunk"])
 
-def _import_vectordb():
-    from src.rag.vectordb_qdrant import ChunkItem, VectorDBQdrant  # noqa: F401
-    globals()["ChunkItem"] = ChunkItem
+
+def _vectordb():
+    from src.rag.retrieval.vectordb_qdrant import VectorDBQdrant
+    from src.rag.core.types import ChunkItem
+
     globals()["VectorDBQdrant"] = VectorDBQdrant
-    __all__.extend(["ChunkItem", "VectorDBQdrant"])
+    globals()["ChunkItem"] = ChunkItem
+    __all__.extend(["VectorDBQdrant", "ChunkItem"])
 
-def _import_agent():
-    from src.rag.agent import Agent  # noqa: F401
+
+def _agent():
+    from src.rag.agent.agent import Agent
+
     globals()["Agent"] = Agent
     __all__.append("Agent")
 
 
-for _fn in (
-    _import_config,
-    _import_prompt_handler,
-    _import_guardrails,
-    _import_llm_adapters,
-    _import_embedder,
-    _import_retriever,
-    _import_vectordb,
-    _import_agent,
-):
-    _safe_import(_fn, [])
+for _fn in (_core, _prompt_handler, _guardrails, _llm_adapters, _embedder, _retriever, _vectordb, _agent):
+    _safe(_fn)

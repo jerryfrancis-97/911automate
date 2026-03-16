@@ -53,7 +53,7 @@ def test_load_documents_pdf_url_metadata_keys() -> None:
 def test_load_documents_empty_handling() -> None:
     """Mock loader returning empty list; verify no error, returns []."""
     loader = URLDocumentLoader()
-    with patch("src.rag.ingestion.OnlinePDFLoader") as mock_loader_cls:
+    with patch("src.rag.ingestion.loader.OnlinePDFLoader") as mock_loader_cls:
         mock_loader = MagicMock()
         mock_loader.load.return_value = []
         mock_loader_cls.return_value = mock_loader

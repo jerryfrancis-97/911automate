@@ -5,8 +5,9 @@ import uuid
 
 import pytest
 
-from src.rag.config import Config
-from src.rag.vectordb_qdrant import ChunkItem, VectorDBQdrant
+from src.rag.core.config import Config
+from src.rag.core.types import ChunkItem
+from src.rag.retrieval.vectordb_qdrant import VectorDBQdrant
 
 
 def _normalize(vec: list[float]) -> list[float]:

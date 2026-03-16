@@ -5,10 +5,10 @@ import uuid
 
 import pytest
 
-from src.rag.config import Config
-from src.rag.embedder import Embedder
-from src.rag.retriever import CalculateMMR, Retriever, RetrievedChunk
-from src.rag.vectordb_qdrant import ChunkItem, VectorDBQdrant
+from src.rag.core.config import Config
+from src.rag.retrieval.embedder import Embedder
+from src.rag.retrieval.retriever import Retriever, RetrievedChunk, _calc_mmr_score, _cosine_sim
+from src.rag.retrieval.vectordb_qdrant import ChunkItem, VectorDBQdrant
 
 
 def _normalize(vec: list[float]) -> list[float]:
@@ -94,21 +94,20 @@ def test_retriever_importable() -> None:
     """Retriever importable from src.rag.retriever."""
     assert Retriever is not None
     assert RetrievedChunk is not None
-    assert CalculateMMR is not None
 
 
 def test_calculate_mmr_cosine_sim() -> None:
-    """CalculateMMR._cosine_sim: same normalized vector gives 1.0, orthogonal gives 0."""
+    """_cosine_sim: same normalized vector gives 1.0, orthogonal gives 0."""
     vec = _normalize([1.0, 0.0, 0.0])
-    assert abs(CalculateMMR._cosine_sim(vec, vec) - 1.0) < 1e-6
+    assert abs(_cosine_sim(vec, vec) - 1.0) < 1e-6
     orth = _normalize([0.0, 1.0, 0.0])
-    assert abs(CalculateMMR._cosine_sim(vec, orth)) < 1e-6
+    assert abs(_cosine_sim(vec, orth)) < 1e-6
 
 
 def test_calculate_mmr_calc_mmr_score_no_selected() -> None:
     """When selected_vectors is empty, _calc_mmr_score = (1 - lambda) * relevance."""
     vec = _make_vector(4, 1)
-    score = CalculateMMR._calc_mmr_score(vec, 0.9, [], mmr_lambda=0.5)
+    score = _calc_mmr_score(vec, 0.9, [], mmr_lambda=0.5)
     assert abs(score - 0.45) < 1e-6
 
 
@@ -116,8 +115,8 @@ def test_calculate_mmr_calc_mmr_score_with_selected() -> None:
     """When selected vectors exist, MMR penalizes similarity to selected."""
     vec_a = _make_vector(4, 1)
     vec_b = _make_vector(4, 2)
-    score_same = CalculateMMR._calc_mmr_score(vec_a, 0.9, [vec_a], mmr_lambda=0.5)
-    score_diff = CalculateMMR._calc_mmr_score(vec_b, 0.9, [vec_a], mmr_lambda=0.5)
+    score_same = _calc_mmr_score(vec_a, 0.9, [vec_a], mmr_lambda=0.5)
+    score_diff = _calc_mmr_score(vec_b, 0.9, [vec_a], mmr_lambda=0.5)
     assert score_diff > score_same
 
 

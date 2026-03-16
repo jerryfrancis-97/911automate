@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.rag.session_state import (
+from src.rag.core.session_state import (
     InMemorySessionStore,
     SessionState,
     SessionStore,

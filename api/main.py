@@ -20,10 +20,10 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from qdrant_client import QdrantClient
 
-from src.rag.agent import Agent
-from src.rag.config import Config
-from src.rag.rag_logger import log_rag_request
-from src.rag.session_state import SessionStore, get_or_create_session
+from src.rag.agent.agent import Agent
+from src.rag.core.config import Config
+from src.rag.observability.rag_logger import log_rag_request
+from src.rag.core.session_state import SessionStore, get_or_create_session
 
 from api.async_utils import run_in_thread
 from api.deps import get_agent, get_session_store, lifespan
@@ -216,8 +216,15 @@ async def chat(
 @app.post("/escalate", response_model=SessionResponse)
 def escalate(
     body: EscalateRequest,
+    request: Request,
     store: SessionStore = Depends(get_session_store),
 ) -> SessionResponse:
+    config = getattr(request.app.state, "config", None)
+    if config and getattr(config, "eval_mode", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Manual escalation disabled in eval mode",
+        )
     sess = store.get(body.session_id)
     if sess is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -232,12 +239,15 @@ def escalate(
 def ready(request: Request) -> ReadyResponse:
     """Agent warm status. Use for readiness probes. Embedder and retriever are ready when agent is ready."""
     agent_ready = getattr(request.app.state, "agent_ready", False)
+    config = getattr(request.app.state, "config", None)
+    eval_mode = getattr(config, "eval_mode", False) if config else False
     return ReadyResponse(
         agent_ready=agent_ready,
         agent_initializing=getattr(request.app.state, "agent_initializing", False),
         embedder_ready=agent_ready,
         retriever_ready=agent_ready,
         error=getattr(request.app.state, "agent_error", None),
+        eval_mode=eval_mode,
     )
 
 

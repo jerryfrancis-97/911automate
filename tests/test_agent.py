@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from src.rag.agent import Agent, _extract_llm_confidence
-from src.rag.config import Config
-from src.rag.llm_adapters import APILLM, OllamaLLM, get_llm
-from src.rag.prompt_handler import PromptHandler
-from src.rag.retriever import ProvenanceInfo, RetrievedChunk
+from src.rag.agent.agent import Agent, _extract_llm_confidence
+from src.rag.core.config import Config
+from src.rag.agent.llm_adapters import APILLM, OllamaLLM, get_llm
+from src.rag.agent.prompt_handler import PromptHandler
+from src.rag.core.types import ProvenanceInfo, RetrievedChunk
 
 
 # --- Mocks ---
@@ -41,10 +41,10 @@ class MockLLM:
 
 def test_agent_importable() -> None:
     """Agent, PromptHandler, LLM adapters are importable."""
-    from src.rag.agent import Agent
-    from src.rag.llm_adapters import APILLM, OllamaLLM
-    from src.rag.prompt_handler import PromptHandler
-    from src.rag.session_state import SessionState
+    from src.rag.agent.agent import Agent
+    from src.rag.agent.llm_adapters import APILLM, OllamaLLM
+    from src.rag.agent.prompt_handler import PromptHandler
+    from src.rag.core.session_state import SessionState
 
     assert Agent is not None
     assert SessionState is not None
@@ -58,7 +58,7 @@ def test_handle_returns_action_keys() -> None:
     retriever = MockRetriever(
         chunks=[{"text": "Some context.", "metadata": {}, "score": 0.9}]
     )
-    agent = Agent(retriever=retriever, llm=MockLLM("Answer here"))
+    agent = Agent(retriever=retriever, config=Config(), llm=MockLLM("Answer here"))
     result = agent.handle("What is X?")
     assert "action" in result
     assert "response" in result
@@ -127,6 +127,7 @@ def test_high_confidence_answer() -> None:
     )
     agent = Agent(
         retriever=retriever,
+        config=Config(),
         llm=MockLLM("Based on the context: here is the answer."),
     )
     result = agent.handle("What is the protocol?")
@@ -138,8 +139,8 @@ def test_high_confidence_answer() -> None:
 def test_prompt_handler_loads() -> None:
     """PromptHandler.get_prompt('agent_system') returns non-empty string."""
     project_root = Path(__file__).resolve().parent.parent
-    prompts_dir = project_root / "prompts"
-    handler = PromptHandler(prompts_dir)
+    prompts_path = project_root / "prompts" / "system_prompts.yaml"
+    handler = PromptHandler(prompts_path=prompts_path)
     text = handler.get_prompt("agent_system")
     assert isinstance(text, str)
     assert len(text) > 0
@@ -150,7 +151,7 @@ def test_ollama_llm_mock() -> None:
     retriever = MockRetriever(
         chunks=[{"text": "Test", "metadata": {}, "score": 0.95}]
     )
-    agent = Agent(retriever=retriever, llm=MockLLM("Test reply"))
+    agent = Agent(retriever=retriever, config=Config(), llm=MockLLM("Test reply"))
     result = agent.handle("Test question")
     assert result["action"] == "answer"
     assert result["response"] == "Test reply"
@@ -186,7 +187,7 @@ def _make_loop_agent(llm: MockLLM) -> Agent:
     retriever = MockRetriever(
         chunks=[{"text": "Relevant context.", "metadata": {}, "score": 0.95}]
     )
-    return Agent(retriever=retriever, llm=llm)
+    return Agent(retriever=retriever, config=Config(), llm=llm)
 
 
 def test_loop_quit_no_llm_call(monkeypatch, capsys) -> None:
@@ -243,7 +244,7 @@ def test_handle_returns_sources_key() -> None:
     retriever = MockRetriever(chunks=[
         _chunk_with_provenance("Context A", 0.9, doc_id="d1", page=1, chunk_index=0),
     ])
-    agent = Agent(retriever=retriever, llm=MockLLM("Answer"))
+    agent = Agent(retriever=retriever, config=Config(), llm=MockLLM("Answer"))
     result = agent.handle("question")
     assert "sources" in result
     assert isinstance(result["sources"], list)
@@ -256,7 +257,7 @@ def test_provenance_fields_present_in_sources() -> None:
         _chunk_with_provenance("A", 0.92, "doc1", 2, 5, "/data/doc1.pdf"),
         _chunk_with_provenance("B", 0.88, "doc2", 1, 0, "/data/doc2.pdf"),
     ])
-    agent = Agent(retriever=retriever, llm=MockLLM("Answer"))
+    agent = Agent(retriever=retriever, config=Config(), llm=MockLLM("Answer"))
     result = agent.handle("question")
     for src in result["sources"]:
         assert "doc_id" in src
@@ -272,7 +273,7 @@ def test_provenance_fields_present_in_sources() -> None:
 def test_blocked_message_has_empty_sources() -> None:
     """Banned content returns sources=[]."""
     retriever = MockRetriever(chunks=[])
-    agent = Agent(retriever=retriever, llm=MockLLM("x"))
+    agent = Agent(retriever=retriever, config=Config(), llm=MockLLM("x"))
     result = agent.handle("fuck this", session={})
     assert result["action"] == "blocked"
     assert result["sources"] == []

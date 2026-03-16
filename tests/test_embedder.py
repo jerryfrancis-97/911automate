@@ -2,8 +2,8 @@
 
 import pytest
 
-from src.rag.config import Config
-from src.rag.embedder import Embedder
+from src.rag.core.config import Config
+from src.rag.retrieval.embedder import Embedder
 
 
 def test_embedder_importable() -> None:

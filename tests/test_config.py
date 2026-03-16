@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.rag.config import Config
+from src.rag.core.config import Config
 
 
 def test_config_importable() -> None:
@@ -17,7 +17,7 @@ def test_config_instantiable_with_defaults() -> None:
 
 
 def test_config_default_values() -> None:
-    """Config has expected default values."""
+    """Config has expected default values (from YAML or built-in defaults)."""
     config = Config()
     assert config.qdrant_url == "http://localhost:6333"
     assert config.qdrant_api_key is None
@@ -27,11 +27,12 @@ def test_config_default_values() -> None:
     assert config.embedding_dim == 384
     assert config.top_k == 5
     assert config.confidence_threshold == 0.7
-    assert config.max_clarify_rounds == 3
+    assert config.max_clarify_rounds == 2
+    assert config.eval_mode is False
 
 
 def test_config_override_values() -> None:
-    """Config accepts overridden values."""
+    """Config accepts overridden values via kwargs."""
     config = Config(
         qdrant_url="http://custom:6334",
         qdrant_api_key="secret",
@@ -42,4 +43,4 @@ def test_config_override_values() -> None:
     assert config.qdrant_api_key == "secret"
     assert config.collection_name == "custom_collection"
     assert config.top_k == 10
-    assert config.embedding_dim == 384  # unchanged default
+    assert config.embedding_dim == 384

@@ -1,12 +1,14 @@
-"""Observability stub. All telemetry disabled."""
+"""Observability: telemetry and structured logging."""
 
 import logging
-from src.rag.logging_setup import configure_logging
+
+from src.rag.observability.logging_setup import configure_logging
 
 _INITIALISED = False
 
 
 def init_telemetry(service_name: str = "911automate") -> None:
+    """Initialize telemetry. Currently a stub — all telemetry disabled."""
     global _INITIALISED
     if _INITIALISED:
         return

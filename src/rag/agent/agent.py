@@ -5,13 +5,13 @@ import re
 import time
 from typing import Any
 
-from api.metrics import record_rag_llm_latency, record_rag_retrieval_latency
-from src.rag.config import Config
-from src.rag.guardrails import check_for_banned_content, should_escalate
-from src.rag.llm_adapters import OllamaLLM, APILLM, get_llm
-from src.rag.prompt_handler import PromptHandler
-from src.rag.retriever import ProvenanceInfo, Retriever, RetrievedChunk
-from src.rag.session_state import (
+from src.rag.core.config import Config
+from src.rag.agent.guardrails import GuardrailCheck, default_guardrail, should_escalate
+from src.rag.agent.llm_adapters import LLM, get_llm
+from src.rag.agent.prompt_handler import PromptHandler
+from src.rag.retrieval.retriever import Retriever
+from src.rag.core.types import MetricsRecorder, ProvenanceInfo, RetrievedChunk
+from src.rag.core.session_state import (
     InMemorySessionStore,
     SessionState,
     SessionStore,
@@ -51,20 +51,24 @@ class Agent:
     def __init__(
         self,
         retriever: Retriever,
-        config: Config | None = None,
-        llm: OllamaLLM | APILLM | None = None,
+        config: Config,
+        llm: LLM | None = None,
         prompt_handler: PromptHandler | None = None,
         session_store: SessionStore | None = None,
+        metrics: MetricsRecorder | None = None,
+        guardrail: GuardrailCheck | None = None,
     ) -> None:
         self._retriever = retriever
-        self._config = config or Config()
+        self._config = config
         self._llm = llm or get_llm(self._config)
         self._prompt_handler = prompt_handler or PromptHandler(
-            self._config.prompts_dir
+            prompts_path=self._config.prompts_file
         )
         self._session_store: SessionStore = (
             session_store or InMemorySessionStore()
         )
+        self._metrics = metrics
+        self._guardrail = guardrail or default_guardrail()
 
     def handle(
         self,
@@ -79,82 +83,123 @@ class Agent:
         raw ``session`` dict for backward-compatibility with existing callers
         and tests.
         """
-        if session is not None:
-            sess = self._session_from_dict(session)
-        else:
-            sess = get_or_create_session(self._session_store, session_id)
+        sess = (
+            self._session_from_dict(session)
+            if session is not None
+            else get_or_create_session(self._session_store, session_id)
+        )
 
-        banned = check_for_banned_content(question)
-        if banned["flagged"]:
-            sess.history.append({"role": "user", "content": question})
-            refusal = (
-                "Your message was flagged for inappropriate content. "
-                "Please rephrase your question."
-            )
-            sess.history.append({"role": "assistant", "content": refusal})
-            sess.last_confidence = 0.0
-            self._session_store.put(sess)
-            return self._result("blocked", refusal, 0.0, sess, sources=[])
+        blocked = self._check_guardrails(question, sess)
+        if blocked is not None:
+            return blocked
 
+        chunks, sources = self._retrieve(question, sess)
+        context_block = self._build_context(chunks)
+        return self._decide_and_respond(
+            question, sess, chunks, sources, context_block
+        )
+
+    def _check_guardrails(
+        self, question: str, sess: SessionState
+    ) -> dict[str, Any] | None:
+        """If banned content, return result dict; else None."""
+        result = self._guardrail.check(question)
+        if not result.flagged:
+            return None
+        sess.history.append({"role": "user", "content": question})
+        refusal = (
+            "Your message was flagged for inappropriate content. "
+            "Please rephrase your question."
+        )
+        sess.history.append({"role": "assistant", "content": refusal})
+        sess.last_confidence = 0.0
+        self._session_store.put(sess)
+        return self._result("blocked", refusal, 0.0, sess, sources=[])
+
+    def _retrieve(
+        self, question: str, sess: SessionState
+    ) -> tuple[list[RetrievedChunk], list[ProvenanceInfo]]:
+        """Retrieve chunks, update sess, return (chunks, sources)."""
         start = time.perf_counter()
         chunks = self._retriever.retrieve(question)
-        record_rag_retrieval_latency(time.perf_counter() - start)
-
-        sources: list[ProvenanceInfo] = [
-            c["provenance"] for c in chunks if "provenance" in c
-        ]
-
+        if self._metrics is not None:
+            self._metrics.record_retrieval_latency(time.perf_counter() - start)
+        sources = [c["provenance"] for c in chunks if "provenance" in c]
         sess.last_retrieval_ids = [
             c["metadata"].get("chunk_id", "") for c in chunks
         ]
+        return chunks, sources
 
+    def _build_context(self, chunks: list[RetrievedChunk]) -> str:
+        """Build context block from chunks."""
+        return (
+            "\n\n---\n\n".join(c["text"] for c in chunks if c.get("text"))
+            or "(No relevant context retrieved.)"
+        )
+
+    def _build_messages_with_history(
+        self,
+        system_content: str,
+        user_content: str,
+        sess: SessionState,
+    ) -> list[dict[str, str]]:
+        """Build messages with optional history window between system and user."""
+        messages: list[dict[str, str]] = [{"role": "system", "content": system_content}]
+        max_turns = getattr(self._config, "max_history_turns", 4)
+        if sess.history and max_turns > 0:
+            window = sess.history[-max_turns:]
+            for turn in window:
+                messages.append({"role": turn["role"], "content": turn["content"]})
+        messages.append({"role": "user", "content": user_content})
+        return messages
+
+    def _decide_and_respond(
+        self,
+        question: str,
+        sess: SessionState,
+        chunks: list[RetrievedChunk],
+        sources: list[ProvenanceInfo],
+        context_block: str,
+    ) -> dict[str, Any]:
+        """Route to answer/clarify/escalate and return result."""
         confidence = _compute_confidence(chunks)
-
-        context_block = "\n\n---\n\n".join(
-            c["text"] for c in chunks if c.get("text")
-        ) or "(No relevant context retrieved.)"
-
         threshold = self._config.confidence_threshold
+        eval_mode = self._config.eval_mode
+        would_escalate = should_escalate(
+            confidence, sess.clarify_rounds, self._config
+        )
 
-        if confidence < threshold and not should_escalate(
-            confidence, sess.clarify_rounds, self._config
-        ):
-            clarify_prompt = self._prompt_handler.get_prompt("clarify")
-            messages = [
-                {"role": "system", "content": clarify_prompt},
-                {
-                    "role": "user",
-                    "content": (
-                        f"Context:\n{context_block}\n\n"
-                        f"User question: {question}\n\n"
-                        "Generate 1\u20132 clarifying questions."
-                    ),
-                },
-            ]
-            response_text = self._invoke_llm(messages, action="clarify")
-            action = "clarify"
-            sess.clarify_rounds += 1
-        elif should_escalate(
-            confidence, sess.clarify_rounds, self._config
-        ):
+        if would_escalate and not eval_mode:
             action = "escalate"
             response_text = (
                 "I don't have enough information to answer confidently. "
                 "I'm escalating to a human operator for assistance."
             )
+        elif confidence < threshold and not would_escalate and not (
+            eval_mode and sess.clarify_rounds >= self._config.max_clarify_rounds
+        ):
+            clarify_prompt = self._prompt_handler.get_prompt("clarify")
+            user_content = (
+                f"Context:\n{context_block}\n\n"
+                f"User question: {question}\n\n"
+                "Generate 1–2 clarifying questions."
+            )
+            messages = self._build_messages_with_history(
+                clarify_prompt, user_content, sess
+            )
+            response_text = self._invoke_llm(messages, action="clarify")
+            action = "clarify"
+            sess.clarify_rounds += 1
         else:
             sys_prompt = self._prompt_handler.get_prompt("agent_system")
-            messages = [
-                {"role": "system", "content": sys_prompt},
-                {
-                    "role": "user",
-                    "content": (
-                        f"Context:\n{context_block}\n\n"
-                        f"Question: {question}\n\n"
-                        "Answer based on the context above:"
-                    ),
-                },
-            ]
+            user_content = (
+                f"Context:\n{context_block}\n\n"
+                f"Question: {question}\n\n"
+                "Answer based on the context above:"
+            )
+            messages = self._build_messages_with_history(
+                sys_prompt, user_content, sess
+            )
             response_text = self._invoke_llm(messages, action="answer")
             llm_conf = _extract_llm_confidence(response_text)
             if llm_conf is not None:
@@ -165,10 +210,7 @@ class Agent:
         sess.history.append({"role": "assistant", "content": response_text})
         sess.last_confidence = confidence
         self._session_store.put(sess)
-
-        return self._result(
-            action, response_text, confidence, sess, sources=sources
-        )
+        return self._result(action, response_text, confidence, sess, sources=sources)
 
     def run_agent_loop(self) -> None:
         """Interactive CLI loop. Input 'quit' to exit without calling LLM."""
@@ -192,7 +234,8 @@ class Agent:
         """Call LLM."""
         start = time.perf_counter()
         result = self._llm.invoke(messages)
-        record_rag_llm_latency(time.perf_counter() - start)
+        if self._metrics is not None:
+            self._metrics.record_llm_latency(time.perf_counter() - start)
         return result
 
     @staticmethod

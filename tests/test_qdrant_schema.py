@@ -2,7 +2,8 @@
 
 import pytest
 
-from src.rag.vectordb_qdrant import QdrantPayload, validate_payload, _TEXT_PREVIEW_MAX
+from src.rag.core.types import QdrantPayload
+from src.rag.retrieval.vectordb_qdrant import _TEXT_PREVIEW_MAX, validate_payload
 
 
 # ---------------------------------------------------------------------------

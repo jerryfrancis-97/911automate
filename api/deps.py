@@ -18,36 +18,34 @@ from fastapi import FastAPI, HTTPException, Request
 from qdrant_client import QdrantClient
 
 from api.async_utils import run_in_thread
-from src.rag.config import Config
+from src.rag.core.config import Config
 from src.rag.observability import init_telemetry
-from src.rag.session_state import SessionStore
+from src.rag.core.session_state import SessionStore
 
 logger = logging.getLogger(__name__)
 _agent_lock = threading.Lock()
 
 
-def _build_config() -> Config:
-    return Config(
-        qdrant_url=os.environ.get("QDRANT_URL", "http://localhost:6333"),
-        ollama_base_url=os.environ.get("OLLAMA_URL", "http://localhost:11434"),
-        api_base_url=os.environ.get("API_BASE_URL") or None,
-        api_key=os.environ.get("API_KEY") or None,
-        agent_warm_on_start=os.environ.get("AGENT_WARM_ON_START", "true").lower()
-        in ("true", "1", "yes"),
-    )
 
 
 def _build_agent(config: Config, session_store: SessionStore):
     """Heavy initialisation: imports torch, loads embedding model, connects Qdrant."""
-    from src.rag.agent import Agent
-    from src.rag.embedder import Embedder
-    from src.rag.retriever import Retriever
-    from src.rag.vectordb_qdrant import VectorDBQdrant
+    from api.metrics import PrometheusMetricsRecorder
+    from src.rag.agent.agent import Agent
+    from src.rag.retrieval.embedder import Embedder
+    from src.rag.retrieval.retriever import Retriever
+    from src.rag.retrieval.vectordb_qdrant import VectorDBQdrant
 
-    embedder = Embedder(config)
-    vectordb = VectorDBQdrant(config)
-    retriever = Retriever(embedder, vectordb, config)
-    return Agent(retriever=retriever, config=config, session_store=session_store)
+    embedder = Embedder(config=config)
+    vectordb = VectorDBQdrant(config=config)
+    retriever = Retriever(embedder=embedder, vectordb=vectordb, config=config)
+    metrics = PrometheusMetricsRecorder()
+    return Agent(
+        retriever=retriever,
+        config=config,
+        session_store=session_store,
+        metrics=metrics,
+    )
 
 
 async def _init_agent_background(app: FastAPI) -> None:
@@ -72,8 +70,8 @@ async def _init_agent_background(app: FastAPI) -> None:
 async def lifespan(app: FastAPI):
     init_telemetry()
 
-    config = _build_config()
-    from src.rag.session_state import InMemorySessionStore
+    config = Config.from_env()
+    from src.rag.core.session_state import InMemorySessionStore
 
     session_store = InMemorySessionStore()
     app.state.config = config

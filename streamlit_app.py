@@ -113,22 +113,24 @@ with st.sidebar:
     else:
         st.warning("Cannot reach backend. Is it running?")
 
-    # ----- Manual Escalation -----
-    st.divider()
-    st.header("Manual Escalation")
-    escalation_reason = st.text_input("Reason", key="esc_reason")
-    if st.button("Escalate to Human", use_container_width=True):
-        if not st.session_state.session_id:
-            st.warning("Start a session first.")
-        elif not escalation_reason.strip():
-            st.warning("Enter a reason.")
-        else:
-            data = _post("/escalate", {
-                "session_id": st.session_state.session_id,
-                "reason": escalation_reason.strip(),
-            })
-            if data:
-                st.success("Session escalated to a human operator.")
+    # ----- Manual Escalation (hidden in eval mode) -----
+    eval_mode = ready_data.get("eval_mode", False) if ready_data else False
+    if not eval_mode:
+        st.divider()
+        st.header("Manual Escalation")
+        escalation_reason = st.text_input("Reason", key="esc_reason")
+        if st.button("Escalate to Human", use_container_width=True):
+            if not st.session_state.session_id:
+                st.warning("Start a session first.")
+            elif not escalation_reason.strip():
+                st.warning("Enter a reason.")
+            else:
+                data = _post("/escalate", {
+                    "session_id": st.session_state.session_id,
+                    "reason": escalation_reason.strip(),
+                })
+                if data:
+                    st.success("Session escalated to a human operator.")
 
 # ---------------------------------------------------------------------------
 # Section 2: Chat Interface
