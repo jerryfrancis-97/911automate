@@ -1,10 +1,9 @@
-"""Run DeepEval prompt evaluations for 911automate.
+"""Run DeepEval prompt evaluations locally using Ollama as the base LLM.
 
 This focuses on *base LLM* response quality (no retrieval eval):
 - Uses a GoldContextRetriever to inject the gold `context` strings.
-- Locally defaults to Ollama (llama3.2 from config.yml).
-- In CI, if GEMINI_API_KEY is present, uses Gemini 1.5 Flash as the base LLM.
-- Uses Gemini 2.0 Flash as the DeepEval judge model.
+- Uses Ollama base model from config.yml for generation.
+- Uses Gemini as the DeepEval judge model when GEMINI_API_KEY is provided.
 
 Gold set: eval_dataset/911automate_gold_data_prompt_engg.json
 """
@@ -20,7 +19,6 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
-# Ensure repo root is on sys.path so `import src.*` works when running this file directly.
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -57,12 +55,7 @@ class GoldExample:
 
 
 class GoldContextRetriever:
-    """Retriever that serves *only* the per-example gold context.
-
-    This avoids exercising the real RAG retriever/vector DB while preserving
-    the production Agent prompt shape (it always builds a Context: block from
-    retrieved chunks).
-    """
+    """Retriever that serves *only* the per-example gold context."""
 
     def __init__(self) -> None:
         self._ctx: list[str] = []
@@ -88,7 +81,6 @@ class GoldContextRetriever:
         )
 
     def retrieve(self, query: str, top_k: int | None = None, use_mmr: bool | None = None) -> list[RetrievedChunk]:
-        # Scores are arbitrary here; we keep them high to avoid edge behavior.
         return [self._to_retrieved_chunk(text, i) for i, text in enumerate(self._ctx)]
 
 
@@ -97,41 +89,33 @@ def _load_gold(path: Path) -> list[GoldExample]:
     if not isinstance(raw, list):
         raise ValueError("Gold set must be a JSON array of examples.")
     examples = [GoldExample.from_dict(x) for x in raw if isinstance(x, dict)]
-    # Basic validation
     bad = [i for i, ex in enumerate(examples) if not ex.input or not ex.expected_output]
     if bad:
-        raise ValueError(f"Gold set has {len(bad)} invalid examples (missing input/expected_output). First: {bad[0]}")
+        raise ValueError(
+            f"Gold set has {len(bad)} invalid examples (missing input/expected_output). First: {bad[0]}"
+        )
     return examples
 
 
 def _build_config(args) -> Config:
-    """Choose base LLM: Ollama locally with dry_run param, Gemini 1.5 Flash in CI."""
-
-    if os.environ.get("GEMINI_API_KEY"):
-        # Use existing OpenAI-compatible adapter (APILLM) via config overrides.
-        return Config(
-            api_base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-            api_model="gemini-1.5-flash",
-            api_key=os.environ["GEMINI_API_KEY"],
-            use_ollama_by_default=False,
-            eval_mode=True,
-        )
-
+    cfg = Config.from_env(path=args.config)
+    cfg.eval_mode = True
+    return cfg
 
 
 def _build_metrics() -> list:
-    """DeepEval metrics using Gemini 2.0 Flash as judge."""
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError(
             "GEMINI_API_KEY is required to run DeepEval judge metrics. "
-            "Set GEMINI_API_KEY (CI) or run with --dry-run locally."
+            "Set GEMINI_API_KEY or run with --dry-run locally."
         )
     judge = GeminiModel(model="gemini-2.0-flash", api_key=api_key)
     return [
         AnswerRelevancyMetric(threshold=0.5, model=judge),
         FaithfulnessMetric(threshold=0.5, model=judge),
     ]
+
 
 def _to_test_case(ex: GoldExample, *, actual_output: str) -> LLMTestCase:
     return LLMTestCase(
@@ -144,7 +128,7 @@ def _to_test_case(ex: GoldExample, *, actual_output: str) -> LLMTestCase:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run DeepEval prompt evaluations (no retrieval eval).")
+    parser = argparse.ArgumentParser(description="Run DeepEval prompt evaluations locally (Ollama base LLM).")
     parser.add_argument("--gold", type=str, default=str(DEFAULT_GOLD_PATH), help="Path to gold JSON dataset.")
     parser.add_argument(
         "--config",
@@ -157,7 +141,6 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Validate dataset and build testcases without calling any external LLMs.",
     )
-
     args = parser.parse_args(argv)
 
     gold_path = Path(args.gold)
