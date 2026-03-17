@@ -107,13 +107,6 @@ def _load_gold(path: Path) -> list[GoldExample]:
 def _build_config(args) -> Config:
     """Choose base LLM: Ollama locally with dry_run param, Gemini 1.5 Flash in CI."""
 
-    if args.local_run:
-        # Deterministically load from config.yml (or explicit --config / CONFIG_PATH),
-        # then force eval_mode=True for evaluations.
-        cfg = Config.from_env(path=args.config)
-        cfg.eval_mode = True
-        return cfg
-
     if os.environ.get("GEMINI_API_KEY"):
         # Use existing OpenAI-compatible adapter (APILLM) via config overrides.
         return Config(
@@ -164,11 +157,7 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Validate dataset and build testcases without calling any external LLMs.",
     )
-    parser.add_argument(
-        "--local-run",
-        action="store_true",
-        help="Run locally with Ollama",
-    )
+
     args = parser.parse_args(argv)
 
     gold_path = Path(args.gold)
