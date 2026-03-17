@@ -1,0 +1,301 @@
+[
+  {
+    "input": "What is the compression-to-ventilation ratio for neonatal resuscitation?",
+    "expected_output": "The compression-to-ventilation ratio for neonatal resuscitation is 3:1 (90 compressions and 30 ventilations per minute, totaling 120 events/min).",
+    "context": [
+      "Rescue breathing is delivered at 40\u201360 breaths per minute. Compression-to-ventilation ratio is 3:1, with 90 compressions and 30 ventilations delivered in one minute (120 events per minute)."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "factual"
+  },
+  {
+    "input": "How many compressions per ventilation do you give in newborn CPR?",
+    "expected_output": "For neonatal CPR use a 3:1 compression-to-ventilation ratio \u2014 90 compressions and 30 ventilations per minute (120 events/min).",
+    "context": [
+      "Compression-to-ventilation ratio is 3:1, with 90 compressions and 30 ventilations delivered in one minute (120 events per minute). Rescue breathing is given at 40\u201360 breaths per minute."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "factual"
+  },
+  {
+    "input": "My newborn isn't breathing \u2014 do chest compressions and breaths have a special ratio?",
+    "expected_output": "Yes. In neonatal resuscitation the recommended ratio is 3 compressions to 1 ventilation (3:1), giving 90 compressions and 30 ventilations per minute.",
+    "context": [
+      "Compression-to-ventilation ratio is 3:1, with 90 compressions and 30 ventilations delivered in one minute (120 events per minute)."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "procedural"
+  },
+  {
+    "input": "What epinephrine dose is recommended for a neonate in asystole or persistent bradycardia despite adequate ventilation and compressions?",
+    "expected_output": "Administer epinephrine 0.01\u20130.03 mg/kg of 1:10,000 IV every 5 minutes as needed.",
+    "context": [
+      "If in asystole or persistent bradycardia < 60 bpm despite adequate ventilation and chest compressions administer 0.01\u20130.03 mg/kg of epinephrine 1:10,000 IV every 5 minutes as needed."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "factual"
+  },
+  {
+    "input": "If a newborn's heart rate stays below 60 despite good ventilation, what's the epinephrine guideline?",
+    "expected_output": "Give epinephrine at 0.01\u20130.03 mg/kg (1:10,000) IV and repeat every 5 minutes as needed when heart rate remains <60 despite adequate ventilation and compressions.",
+    "context": [
+      "If in asystole or persistent bradycardia < 60 bpm despite adequate ventilation and chest compressions administer 0.01\u20130.03 mg/kg of epinephrine 1:10,000 IV every 5 minutes as needed."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "factual"
+  },
+  {
+    "input": "If a newborn's blood sugar is <40 mg/dL, what is the recommended IV glucose bolus?",
+    "expected_output": "If blood glucose is <40 mg/dL, administer 2 ml/kg of D10 IV (D10 may be prepared from D50 diluted per protocol).",
+    "context": [
+      "Check blood sugar level; if < 40 mg/dL administer 2 ml/kg of D10 IV. (D10 can be prepared from D50 diluted with normal saline as described.)"
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "factual"
+  },
+  {
+    "input": "Where should you place clamps on the umbilical cord after an uncomplicated delivery?",
+    "expected_output": "Place the first clamp 8\u201310 inches from the newborn and the second clamp about 3 inches from the first clamp toward the mother; cut between the clamps.",
+    "context": [
+      "Place the first clamp 8-10 inches from the newborn. Place the second clamp 3 inches from the first clamp toward the mother. Cut between the clamps and check both ends for bleeding."
+    ],
+    "source_doc": "emergency_childbirth",
+    "question_type": "procedural"
+  },
+  {
+    "input": "How far from the baby should I put the first cord clamp, and where second?",
+    "expected_output": "First clamp about 8\u201310 inches from the newborn, second clamp roughly 3 inches proximal toward the mother; cut between clamps.",
+    "context": [
+      "Place the first clamp 8-10 inches from the newborn. Place the second clamp 3 inches from the first clamp toward the mother. Cut between the clamps and check both ends for bleeding."
+    ],
+    "source_doc": "emergency_childbirth",
+    "question_type": "factual"
+  },
+  {
+    "input": "When are APGAR scores done after delivery?",
+    "expected_output": "APGAR scores should be obtained at 1 and 5 minutes after delivery.",
+    "context": [
+      "APGAR scores are done at 1 and 5 minutes after delivery. Scoring should not delay any interventions."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "factual"
+  },
+  {
+    "input": "Is routine suctioning of mouth and nose immediately after birth recommended?",
+    "expected_output": "Routine suctioning is not recommended; suctioning mouth then nose should be reserved for infants with obvious obstruction or those requiring positive-pressure ventilation.",
+    "context": [
+      "Per AHA guidelines \u2014 suctioning mouth then nose immediately following birth should be reserved for babies who have obvious obstruction to spontaneous breathing or who require positive-pressure ventilations."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "factual"
+  },
+  {
+    "input": "What are the immediate steps for a normal, uncomplicated delivery (brief checklist)?",
+    "expected_output": "Gather OB equipment, support the head as it delivers, check for cord around the neck, suction mouth then nose if needed, keep baby level with the vagina, clamp and cut the cord per protocol, dry and keep baby warm, obtain APGAR at 1 and 5 minutes.",
+    "context": [
+      "Gather equipment \u2014 OB kit, oxygen, BVM, towels, blankets, large dressings. As head crowns, support and apply gentle pressure to prevent explosive delivery. Slide fingers along neck to check for cord. Suction mouth then nose if necessary. Keep baby at level of vagina. Clamp cord and cut as directed. Dry the baby and maintain temperature. Obtain APGAR scores at 1 and 5 minutes."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "procedural"
+  },
+  {
+    "input": "The baby is coming breech (buttocks or feet first) \u2014 what should I do?",
+    "expected_output": "Allow delivery to proceed while supporting the body; after leg delivery support the pelvis. If the head becomes entrapped, insert two gloved fingers along the neck to locate the chin and create an airway by displacing the vaginal wall until the head can be delivered.",
+    "context": [
+      "Allow baby to deliver with contractions while supporting the body. After leg delivery, hold onto pelvis to support the body. If the head appears caught, insert two fingers into the vaginal opening along the baby's neck until the chin is located; place fingers between the chin and vaginal wall and advance past the mouth and nose to create an air passage and maintain it until delivery."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "procedural"
+  },
+  {
+    "input": "The baby is coming feet first \u2014 what should the caller be told to do now?",
+    "expected_output": "Support the baby's body and pelvis during delivery; if the head is stuck, insert two sterile fingers to locate the chin and create an airway by displacing the vaginal wall until the head delivers.",
+    "context": [
+      "Allow baby to deliver with contractions while supporting the body. After leg delivery, hold onto pelvis to support the body. If the head appears caught, insert two fingers into the vaginal opening along the baby's neck until the chin is located; place fingers between the chin and vaginal wall and advance past the mouth and nose to create an air passage and maintain it until delivery."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "procedural"
+  },
+  {
+    "input": "How do you manage shoulder dystocia in the field?",
+    "expected_output": "Attempt McRoberts maneuver (flex mother's hips and bring knees to chest) and apply firm suprapubic pressure; if unsuccessful consider repositioning and urgent transport.",
+    "context": [
+      "If unable to deliver anterior shoulder, have mother flex hips and bring knees to her chest (McRoberts maneuver). Have an assistant put moderate pressure on abdomen just above the symphysis pubis. If maneuvers fail, transport immediately."
+    ],
+    "source_doc": "emergency_childbirth",
+    "question_type": "procedural"
+  },
+  {
+    "input": "What are the steps for managing a prolapsed umbilical cord?",
+    "expected_output": "Place the mother in knee-to-chest (or elevate hips), encourage her not to push, insert sterile gloved fingers to elevate the presenting part off the cord, wrap the cord with saline-moistened sterile dressings, administer high-flow O\u2082, and transport immediately while maintaining elevation.",
+    "context": [
+      "Place the mother in a knee to chest position. Encourage the mother not to push. If the cord is not pulsating, place sterile, gloved fingers into the birth canal and push the head back 1\u20132 inches towards the cervix until the cord begins to pulsate. Wrap saline-moistened sterile dressings around the cord. Administer high flow oxygen and transport immediately while maintaining elevation of the presenting part."
+    ],
+    "source_doc": "emergency_childbirth",
+    "question_type": "procedural"
+  },
+  {
+    "input": "If the cord is prolapsed and baby isn't breathing, what immediate actions should be taken?",
+    "expected_output": "Manage the prolapsed cord (knee\u2011to\u2011chest, elevate presenting part, insert sterile gloved fingers to relieve pressure, wrap the cord with saline\u2011moistened dressings, give high\u2011flow O\u2082 and transport) while simultaneously preparing neonatal resuscitation: provide warmth, clear airway, ventilate and progress to compressions/meds per NRP if needed.",
+    "context": [
+      "Place the mother in a knee to chest position. Encourage the mother not to push. If the cord is not pulsating, place sterile, gloved fingers into the birth canal and push the head back 1\u20132 inches towards the cervix until the cord begins to pulsate. Wrap saline-moistened sterile dressings around the cord. Administer high flow oxygen and transport immediately while maintaining elevation of the presenting part.",
+      "Initial neonatal resuscitation steps: provide warmth, clear airway, dry, stimulate; if not breathing, begin ventilation and follow NRP sequence including 3:1 compressions and epinephrine if indicated."
+    ],
+    "source_doc": "multi-source (emergency_childbirth + birth_emergencies)",
+    "question_type": "multi-hop"
+  },
+  {
+    "input": "What are the initial stabilization steps for a newborn that may need resuscitation?",
+    "expected_output": "Initial steps (within ~60 seconds) are provide warmth, clear the airway if needed, dry and stimulate; then evaluate respirations and heart rate to decide on ventilation, compressions, or medications.",
+    "context": [
+      "If assessment questions indicate need for resuscitation, take initial steps: provide warmth, clear airway, dry, stimulate. Approximately 60 seconds are allotted for completing initial steps, reevaluating, and beginning ventilation if required. Progression depends on respirations and heart rate."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "procedural"
+  },
+  {
+    "input": "At what rate should rescue breathing be delivered for a newborn needing ventilation?",
+    "expected_output": "Provide rescue breaths at 40\u201360 breaths per minute.",
+    "context": [
+      "Rescue breathing is delivered at a rate of 40\u201360 breaths per minute."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "factual"
+  },
+  {
+    "input": "How can IV access be obtained in a newborn in the field?",
+    "expected_output": "Umbilical vein access may be used while the cord is still attached (remove proximal clamp); if hypovolemic, give 10 ml/kg NS bolus over 5\u201310 minutes.",
+    "context": [
+      "You can use the baby\u2019s own umbilical vein within the still attached umbilical cord to gain IV access. Start IV normal saline; if infant is hypovolemic, administer 10 ml/kg IV fluid bolus over 5\u201310 minutes."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "procedural"
+  },
+  {
+    "input": "Caller reports severe abdominal pain with vomiting blood \u2014 should ALS be dispatched?",
+    "expected_output": "Yes \u2014 criteria indicating ALS include unconsciousness, vomiting blood, or black/tarry stools; these are listed as ALS criteria for abdominal pain.",
+    "context": [
+      "Criteria (ALS): unconscious/not breathing normally; vomiting blood (red/dark red) or coffee ground-like; black tarry stool; fainting or near fainting; abdominal pain unspecified."
+    ],
+    "source_doc": "ALEMD_Guidebook",
+    "question_type": "triage"
+  },
+  {
+    "input": "When should breathing problems be escalated to ALS per dispatch criteria?",
+    "expected_output": "Dispatch ALS if the patient is unconscious/not breathing normally, unable to speak in full sentences, has difficulty breathing, or drooling/stridor\u2014these are among ALS criteria for breathing problems.",
+    "context": [
+      "Criteria (Breathing Problems): unconscious/not breathing normally; unable to speak in full sentences; difficulty breathing; drooling or difficulty swallowing; history of asthma or respiratory problems."
+    ],
+    "source_doc": "ALEMD_Guidebook",
+    "question_type": "triage"
+  },
+  {
+    "input": "A patient fell more than 10 feet and is conscious \u2014 is this an ALS or BLS dispatch?",
+    "expected_output": "Falls greater than 10 feet are considered ALS-level criteria.",
+    "context": [
+      "Falls greater than 10 feet are listed as ALS criteria; falls less than 10 feet with controlled findings may be BLS."
+    ],
+    "source_doc": "ALEMD_Guidebook",
+    "question_type": "triage"
+  },
+  {
+    "input": "What are key indicators for cardiac arrest that require immediate CPR instructions from dispatch?",
+    "expected_output": "Indicators include unresponsiveness and not breathing or not breathing normally (agonal respirations); dispatch should proceed to CPR instructions for adult/child/infant as appropriate.",
+    "context": [
+      "If the patient is unresponsive and not breathing (or not breathing normally), go to CPR INSTRUCTIONS-ADULT/CHILD/INFANT. Agonal respirations are ineffective and indicate the need for CPR."
+    ],
+    "source_doc": "ALEMD_Guidebook",
+    "question_type": "triage"
+  },
+  {
+    "input": "What depth should a bulb syringe be inserted to suction a newborn's mouth and nose?",
+    "expected_output": "When suctioning with a bulb syringe, depress before insertion; insert no more than ~1.5 inches into the mouth and no more than ~0.5 inches into the nose for suctioning.",
+    "context": [
+      "Depress the bulb syringe prior to insertion. Suction the mouth first by inserting the syringe no more than 1.5 inches into the newborn\u2019s mouth. Suction the nose by inserting the syringe no more than 0.5 inches into the newborn\u2019s nose."
+    ],
+    "source_doc": "emergency_childbirth",
+    "question_type": "factual"
+  },
+  {
+    "input": "How long can clamping be delayed after an uncomplicated delivery?",
+    "expected_output": "Delay clamping of the umbilical cord for up to one (1) minute after uncomplicated delivery, if safe to do so.",
+    "context": [
+      "Delay clamping of the umbilical cord for up to one (1) minute after uncomplicated delivery, if safe to do so."
+    ],
+    "source_doc": "emergency_childbirth",
+    "question_type": "procedural"
+  },
+  {
+    "input": "What is the recommended action if a caller asks for the oxytocin dose for postpartum hemorrhage?",
+    "expected_output": "The provided context does not contain information about oxytocin dosing; consult medical control or reference local medication protocols.",
+    "context": [],
+    "source_doc": "none",
+    "question_type": "out_of_scope"
+  },
+  {
+    "input": "What's the exact adult naloxone dose for field administration?",
+    "expected_output": "The provided context does not contain information about specific naloxone dosing; this corpus does not include drug dosing tables for adult naloxone.",
+    "context": [],
+    "source_doc": "none",
+    "question_type": "out_of_scope"
+  },
+  {
+    "input": "How long after birth should the placenta be sent for microscopic infection testing?",
+    "expected_output": "The provided context does not contain information about timing for microscopic examination of the placenta.",
+    "context": [],
+    "source_doc": "none",
+    "question_type": "out_of_scope"
+  },
+  {
+    "input": "How should you check for a nuchal cord and what if it's tight?",
+    "expected_output": "If the cord is loose, gently slip it over the newborn\u2019s head. If it's tightly wrapped and prevents manipulation, place two clamps on the cord and cut between the clamps.",
+    "context": [
+      "If the umbilical cord is loose enough, gently slip it over the newborn\u2019s head immediately. If the umbilical cord is wrapped tightly around the neck such that it prevents manipulation, place two clamps on the cord and cut between the clamps."
+    ],
+    "source_doc": "emergency_childbirth",
+    "question_type": "procedural"
+  },
+  {
+    "input": "Dispatcher: what rapid questions must be asked of all callers?",
+    "expected_output": "Key caller questions include location, callback number, the emergency, scene safety, caller name, patient age/sex, consciousness and breathing status; these guide the dispatch card to use.",
+    "context": [
+      "All Callers Interrogation Key Questions: Where is your emergency? What is the number you are calling from? What is the emergency? Is the scene accessible? Is it safe for personnel? What is your name? What is the age and sex of the patient? Is the patient conscious and able to talk? If not, is the patient breathing normally?"
+    ],
+    "source_doc": "ALEMD_Guidebook",
+    "question_type": "factual"
+  },
+  {
+    "input": "How should a nosebleed be managed pre-arrival according to dispatch guidance?",
+    "expected_output": "Tell the patient to pinch the nose tightly, lean forward and hold pressure until help arrives; attempt to spit out blood and avoid swallowing to prevent nausea.",
+    "context": [
+      "For nosebleeds tell patient to apply direct pressure by pinching the nose tightly. Lean forward and hold pressure until help arrives. Attempt to spit out blood; swallowing it may make patient nauseous."
+    ],
+    "source_doc": "ALEMD_Guidebook",
+    "question_type": "factual"
+  },
+  {
+    "input": "Caller frantic: 'The baby's not taking breaths\u2014what do I do?'",
+    "expected_output": "Provide warmth, clear the airway if obstructed, dry and stimulate. If the infant is not breathing or only gasping, begin positive-pressure ventilation at 40\u201360 breaths/min and follow NRP steps; if HR <60 despite adequate ventilation, start compressions at a 3:1 ratio and consider epinephrine per protocol.",
+    "context": [
+      "Initial neonatal resuscitation steps: provide warmth, clear airway, dry, stimulate; rescue breathing at 40\u201360 breaths per minute; compression-to-ventilation ratio is 3:1. If heart rate remains <60 despite adequate ventilation and compressions, administer epinephrine 0.01\u20130.03 mg/kg IV every 5 minutes as needed."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "procedural"
+  },
+  {
+    "input": "The newborn is gasping and not breathing normally \u2014 stepwise instructions?",
+    "expected_output": "Treat gasping as ineffective respirations: provide warmth, clear airway, dry and stimulate; begin positive-pressure ventilation at 40\u201360 breaths/min and reassess heart rate\u2014progress to compressions (3:1) if HR <60 despite adequate ventilation.",
+    "context": [
+      "If not breathing or only gasping, begin positive pressure ventilation at 40\u201360 breaths per minute. Compression-to-ventilation ratio is 3:1 for neonates; proceed to compressions and medications if heart rate remains <60 despite adequate ventilation."
+    ],
+    "source_doc": "birth_emergencies",
+    "question_type": "procedural"
+  },
+  {
+    "input": "What home remedies can lower high blood pressure quickly?",
+    "expected_output": "The provided context does not contain information about home remedies for lowering blood pressure; this corpus contains EMS dispatch and childbirth protocols only.",
+    "context": [],
+    "source_doc": "none",
+    "question_type": "out_of_scope"
+  }
+]

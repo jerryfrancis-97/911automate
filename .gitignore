@@ -213,3 +213,5 @@ test_data/
 logs/
 rag_logs/
 src/rag/qdrant_storage
+
+.env

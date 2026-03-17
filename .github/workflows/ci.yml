@@ -54,3 +54,22 @@ jobs:
             tests/test_idempotent_ingestion.py \
             tests/test_api.py \
             -v
+
+  eval:
+    name: Prompt evaluation (DeepEval)
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Run DeepEval prompt evals (Gemini base + judge)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python eval/run_eval.py
