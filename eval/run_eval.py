@@ -104,8 +104,16 @@ def _load_gold(path: Path) -> list[GoldExample]:
     return examples
 
 
-def _build_config() -> Config:
-    """Choose base LLM: Ollama locally, Gemini 1.5 Flash in CI."""
+def _build_config(args) -> Config:
+    """Choose base LLM: Ollama locally with dry_run param, Gemini 1.5 Flash in CI."""
+
+    if args.local_run:
+        # Deterministically load from config.yml (or explicit --config / CONFIG_PATH),
+        # then force eval_mode=True for evaluations.
+        cfg = Config.from_env(path=args.config)
+        cfg.eval_mode = True
+        return cfg
+
     if os.environ.get("GEMINI_API_KEY"):
         # Use existing OpenAI-compatible adapter (APILLM) via config overrides.
         return Config(
@@ -115,8 +123,7 @@ def _build_config() -> Config:
             use_ollama_by_default=False,
             eval_mode=True,
         )
-    # Local: uses config.yml → Ollama llama3.2
-    return Config(eval_mode=True)
+
 
 
 def _build_metrics() -> list:
@@ -147,9 +154,20 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run DeepEval prompt evaluations (no retrieval eval).")
     parser.add_argument("--gold", type=str, default=str(DEFAULT_GOLD_PATH), help="Path to gold JSON dataset.")
     parser.add_argument(
+        "--config",
+        type=str,
+        default=str(ROOT / "config.yml"),
+        help="Path to config.yml (default: repo root config.yml).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Validate dataset and build testcases without calling any external LLMs.",
+    )
+    parser.add_argument(
+        "--local-run",
+        action="store_true",
+        help="Run locally with Ollama",
     )
     args = parser.parse_args(argv)
 
@@ -158,7 +176,7 @@ def main(argv: list[str] | None = None) -> int:
         raise FileNotFoundError(f"Gold dataset not found: {gold_path}")
 
     examples = _load_gold(gold_path)
-    config = _build_config()
+    config = _build_config(args)
 
     gold_retriever = GoldContextRetriever()
     agent = Agent(retriever=gold_retriever, config=config)
