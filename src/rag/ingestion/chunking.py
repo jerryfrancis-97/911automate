@@ -22,6 +22,14 @@ def deterministic_chunk_id(doc_id: str, page: int, chunk_index: int) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
+MIN_CHUNK_TOKENS = 5
+
+
+def _token_count_approx(text: str) -> int:
+    """Approximate token count using word count (avoids tokenizer dependency)."""
+    return len(text.split())
+
+
 def create_chunks(
     documents: list[Document],
     chunk_size: int = 1000,
@@ -31,6 +39,7 @@ def create_chunks(
     """Split documents into chunks using MarkdownHeaderTextSplitter + RecursiveCharacterTextSplitter.
 
     Saves chunks to output_dir/{doc_id}/chunk_{chunk_index}.md. Returns chunk Documents.
+    Chunks with fewer than MIN_CHUNK_TOKENS tokens are skipped (not stored).
     Validates that all produced chunks have page_content length <= chunk_size.
     """
     output_dir = Path(output_dir)
@@ -63,6 +72,8 @@ def create_chunks(
         doc_dir.mkdir(parents=True, exist_ok=True)
 
         for sub_chunk in size_chunks:
+            if _token_count_approx(sub_chunk.page_content) < MIN_CHUNK_TOKENS:
+                continue
             meta = {
                 "doc_id": doc_id,
                 "page": page,
