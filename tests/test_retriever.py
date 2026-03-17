@@ -27,7 +27,8 @@ def _make_vector(dim: int, seed: int) -> list[float]:
 def embedder() -> Embedder:
     """Embedder with default Config. Skips if Ollama unavailable."""
     try:
-        return Embedder(config=Config(), normalize=True)
+        # Ensure embedding dimension matches the vectordb fixture (nomic-embed-text is 768-dim).
+        return Embedder(config=Config(embedding_dim=768), normalize=True)
     except Exception as e:
         pytest.skip(f"Ollama not available: {e}")
 
@@ -39,7 +40,7 @@ def vectordb() -> VectorDBQdrant:
         config = Config(
             qdrant_url="http://localhost:6333",
             collection_name=f"911automate_retriever_test_{uuid.uuid4().hex[:8]}",
-            embedding_dim=384,
+            embedding_dim=768,
             top_k=5,
         )
         vdb = VectorDBQdrant(config=config)
@@ -84,6 +85,7 @@ def retriever(embedder: Embedder, seeded_vectordb: VectorDBQdrant) -> Retriever:
     return Retriever(
         embedder=embedder,
         vectordb=seeded_vectordb,
+        config=Config(top_k=5),
         use_mmr=True,
         mmr_lambda=0.5,
         candidate_multiplier=2,

@@ -314,6 +314,9 @@ def test_escalate_marks_session():
     p1, p2, p3 = _lifespan_patches()
     with p1, p2, p3:
         with TestClient(app) as client:
+            # /escalate is blocked when eval_mode=True (see api.main.escalate)
+            if getattr(app.state, "config", None) is not None:
+                app.state.config.eval_mode = False
             create = client.post("/session").json()
             sid = create["session_id"]
             resp = client.post("/escalate", json={
@@ -331,12 +334,28 @@ def test_escalate_unknown_session():
     p1, p2, p3 = _lifespan_patches()
     with p1, p2, p3:
         with TestClient(app) as client:
+            # Ensure we test the unknown-session path, not eval_mode lockout.
+            if getattr(app.state, "config", None) is not None:
+                app.state.config.eval_mode = False
             resp = client.post("/escalate", json={
                 "session_id": "nope",
                 "reason": "test",
             })
 
     assert resp.status_code == 404
+
+
+def test_escalate_forbidden_in_eval_mode():
+    """When eval_mode is enabled, manual escalation is disabled (HTTP 403)."""
+    p1, p2, p3 = _lifespan_patches()
+    with p1, p2, p3:
+        with TestClient(app) as client:
+            if getattr(app.state, "config", None) is not None:
+                app.state.config.eval_mode = True
+            create = client.post("/session").json()
+            sid = create["session_id"]
+            resp = client.post("/escalate", json={"session_id": sid, "reason": "test"})
+    assert resp.status_code == 403
 
 
 # ---------------------------------------------------------------------------

@@ -16,7 +16,7 @@ from streamlit_helpers import (
 def test_get_post_timeout_chat_path():
     """POST /chat uses CHAT_TIMEOUT (180s)."""
     assert get_post_timeout("/chat") == CHAT_TIMEOUT
-    assert CHAT_TIMEOUT == 180
+    assert CHAT_TIMEOUT == 300
 
 
 def test_get_post_timeout_other_paths():

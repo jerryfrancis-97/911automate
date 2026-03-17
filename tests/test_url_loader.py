@@ -16,15 +16,19 @@ def test_url_document_loader_importable() -> None:
     assert URLDocumentLoader is not None
 
 
+@pytest.mark.integration
 def test_load_documents_pdf_url_returns_documents_live() -> None:
     """Load from stable public PDF URL, assert len(docs) > 0 (live network test)."""
+    pytest.importorskip("unstructured_inference")
     loader = URLDocumentLoader()
     docs = loader.load_documents(SAMPLE_PDF_URL, doc_id="arxiv_test")
     assert len(docs) > 0
 
 
+@pytest.mark.integration
 def test_load_documents_pdf_url_page_dicts_saved() -> None:
     """Verify markdown files created under data/markdown/{doc_id}/."""
+    pytest.importorskip("unstructured_inference")
     loader = URLDocumentLoader()
     docs = loader.load_documents(SAMPLE_PDF_URL, doc_id="arxiv_page_saved")
     assert len(docs) > 0
@@ -36,8 +40,10 @@ def test_load_documents_pdf_url_page_dicts_saved() -> None:
     assert md_files[0].read_text()
 
 
+@pytest.mark.integration
 def test_load_documents_pdf_url_metadata_keys() -> None:
     """Documents have doc_id, source, page in metadata."""
+    pytest.importorskip("unstructured_inference")
     loader = URLDocumentLoader()
     docs = loader.load_documents(SAMPLE_PDF_URL, doc_id="arxiv_meta_test")
     assert len(docs) > 0

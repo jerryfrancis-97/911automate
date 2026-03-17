@@ -21,8 +21,11 @@ def test_system_prompt_returns_string():
     result = system_prompt()
     assert isinstance(result, str)
     assert len(result) > 0
-    assert "escalate" in result.lower()
-    assert "profanity" in result.lower() or "harassment" in result.lower()
+    # Guardrails prompt is a classifier; assert stable intent keywords.
+    lowered = result.lower()
+    assert "profanity" in lowered or "harassment" in lowered
+    assert "classification" in lowered
+    assert "proceed" in lowered and "block" in lowered
 
 
 def test_system_prompt_fallback():
@@ -31,6 +34,7 @@ def test_system_prompt_fallback():
     result = system_prompt(prompt_handler=handler)
     assert isinstance(result, str)
     assert len(result) > 0
+    # Fallback prompt should include escalation language.
     assert "escalate" in result.lower()
 
 
