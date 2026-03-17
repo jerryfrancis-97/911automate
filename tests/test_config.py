@@ -11,13 +11,13 @@ def test_config_importable() -> None:
 
 
 def test_config_instantiable_with_defaults() -> None:
-    """Config can be instantiated with all defaults."""
+    """Config can be instantiated by loading config.yml."""
     config = Config()
     assert config is not None
 
 
 def test_config_default_values() -> None:
-    """Config has expected default values (from YAML or built-in defaults)."""
+    """Config has expected values from config.yml."""
     config = Config()
     assert config.qdrant_url == "http://localhost:6333"
     assert config.qdrant_api_key is None
