@@ -15,6 +15,68 @@ Minimal production-ready Python project for 911/EMS automation with Retrieval-Au
 | **Document Parsing** | PyMuPDF, Docling, pypdf |
 | **Dev** | pytest, mypy, yapf |
 
+---
+## System Design (High-Level)
+
+![911automate High-Level System Architecture](assets/system_arch.png)
+
+
+## Design Decisions & Fine-Grained Choices
+
+### Embedding & Chunking
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Embedding model | `nomic-embed-text` (768-dim) via Ollama | Runs locally, no API costs; strong performance on retrieval benchmarks for its size |
+| Tokenizer for chunking | `nomic-ai/nomic-embed-text-v1.5` HuggingFace tokenizer | Token-accurate splitting aligned with the embedding model's vocabulary (not character-based) |
+| Chunk size | 400 tokens, 50-token overlap | Balances context density with retrieval precision; overlap prevents boundary information loss |
+| Minimum chunk filter | 5 tokens | Drops noise chunks (page headers, footers, empty fragments) |
+| Chunk ID strategy | SHA-256 of `doc_id:page:chunk_index`, truncated to 16 hex chars → converted to int for Qdrant | Deterministic (re-ingestion is idempotent), collision-resistant |
+| Input truncation | 512 tokens max before embedding | Prevents `nomic-embed-text` from silently truncating; applied in `Embedder.embed_texts()` |
+
+### Retrieval
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Vector DB | Qdrant (cosine distance) | Self-hosted, no vendor lock-in; first-class filtering and payload support |
+| Re-ranking | MMR (Maximal Marginal Relevance) with λ=0.5 | Balances relevance with diversity; reduces redundant chunks in context |
+| Candidate multiplier | 2× top_k | Fetches more candidates for MMR to select from |
+| L2 normalization | Applied post-embedding | Ensures cosine similarity is equivalent to dot product for Qdrant |
+
+### Agent & LLM
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| LLM | Ollama `llama3.2` (default), or OpenAI-compatible API via `APILLM` | Local-first for privacy and cost; API fallback for cloud/CI |
+| Prompt loading | Per-task YAML files in `prompts/` | Decouples prompt engineering from code; easy A/B testing |
+| Context formatting | `[doc_id: X, page: Y]\n\n<chunk_text>` separated by `---` | Gives the LLM source attribution for grounded answers |
+| Session management | In-memory `SessionStore` with UUID sessions | Sufficient for single-process; protocol-based for future Redis/DB swap |
+| History window | Last 4 turns injected between system and user messages | Keeps context window manageable while preserving conversation continuity |
+| Confidence scoring | Mean of retrieval similarity scores | Simple, interpretable; optionally overridden by LLM-parsed confidence |
+
+
+### API & Deployment
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| API framework | FastAPI with async endpoints + thread offload | Non-blocking HTTP serving; blocking Agent calls run in a threadpool |
+| Agent initialization | Warm-on-start (background task) or lazy on first `/chat` | Fast server startup; configurable via `agent_warm_on_start` |
+| Metrics | Prometheus counters + histograms exposed at `/metrics` | Standard observability; Grafana-ready |
+| Request logging | JSONL per-request (question, chunks, answer, confidence, latency) | Enables offline RAG quality analysis without Prometheus |
+| Docker services | Qdrant + Ollama with named volumes | Persistent storage across restarts; no data loss on container recreation |
+
+### Evaluation
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Framework | DeepEval | Open-source, supports LLM-as-judge metrics |
+| Judge model | Gemini 2.0 Flash | Fast, cost-effective; good correlation with human eval on factual tasks |
+| Base model (CI) | Gemini 1.5 Flash | Avoids needing Ollama in GitHub Actions; OpenAI-compatible endpoint |
+| Retrieval in eval | Bypassed (`GoldContextRetriever`) | Isolates prompt+LLM quality from retrieval quality |
+| Gold set schema | `{input, expected_output, context[], source_doc, question_type}` | Minimal but sufficient for relevance + faithfulness metrics |
+| CI trigger | Separate `eval.yml` workflow on `prompts/`, `eval/`, `eval_dataset/` changes | Eval only runs when prompt/dataset changes |
+
+
 ## Setup & Run
 
 ### Prerequisites
@@ -99,67 +161,6 @@ curl -X POST http://localhost:8000/chat ^
 ```
 
 ---
-
-## Design Decisions & Fine-Grained Choices
-
-### Embedding & Chunking
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Embedding model | `nomic-embed-text` (768-dim) via Ollama | Runs locally, no API costs; strong performance on retrieval benchmarks for its size |
-| Tokenizer for chunking | `nomic-ai/nomic-embed-text-v1.5` HuggingFace tokenizer | Token-accurate splitting aligned with the embedding model's vocabulary (not character-based) |
-| Chunk size | 400 tokens, 50-token overlap | Balances context density with retrieval precision; overlap prevents boundary information loss |
-| Minimum chunk filter | 5 tokens | Drops noise chunks (page headers, footers, empty fragments) |
-| Chunk ID strategy | SHA-256 of `doc_id:page:chunk_index`, truncated to 16 hex chars → converted to int for Qdrant | Deterministic (re-ingestion is idempotent), collision-resistant |
-| Input truncation | 512 tokens max before embedding | Prevents `nomic-embed-text` from silently truncating; applied in `Embedder.embed_texts()` |
-
-### Retrieval
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Vector DB | Qdrant (cosine distance) | Self-hosted, no vendor lock-in; first-class filtering and payload support |
-| Re-ranking | MMR (Maximal Marginal Relevance) with λ=0.5 | Balances relevance with diversity; reduces redundant chunks in context |
-| Candidate multiplier | 2× top_k | Fetches more candidates for MMR to select from |
-| L2 normalization | Applied post-embedding | Ensures cosine similarity is equivalent to dot product for Qdrant |
-
-### Agent & LLM
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| LLM | Ollama `llama3.2` (default), or OpenAI-compatible API via `APILLM` | Local-first for privacy and cost; API fallback for cloud/CI |
-| Prompt loading | Per-task YAML files in `prompts/` | Decouples prompt engineering from code; easy A/B testing |
-| Context formatting | `[doc_id: X, page: Y]\n\n<chunk_text>` separated by `---` | Gives the LLM source attribution for grounded answers |
-| Session management | In-memory `SessionStore` with UUID sessions | Sufficient for single-process; protocol-based for future Redis/DB swap |
-| History window | Last 4 turns injected between system and user messages | Keeps context window manageable while preserving conversation continuity |
-| Confidence scoring | Mean of retrieval similarity scores | Simple, interpretable; optionally overridden by LLM-parsed confidence |
-
-
-### API & Deployment
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| API framework | FastAPI with async endpoints + thread offload | Non-blocking HTTP serving; blocking Agent calls run in a threadpool |
-| Agent initialization | Warm-on-start (background task) or lazy on first `/chat` | Fast server startup; configurable via `agent_warm_on_start` |
-| Metrics | Prometheus counters + histograms exposed at `/metrics` | Standard observability; Grafana-ready |
-| Request logging | JSONL per-request (question, chunks, answer, confidence, latency) | Enables offline RAG quality analysis without Prometheus |
-| Docker services | Qdrant + Ollama with named volumes | Persistent storage across restarts; no data loss on container recreation |
-
-### Evaluation
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Framework | DeepEval | Open-source, supports LLM-as-judge metrics |
-| Judge model | Gemini 2.0 Flash | Fast, cost-effective; good correlation with human eval on factual tasks |
-| Base model (CI) | Gemini 1.5 Flash | Avoids needing Ollama in GitHub Actions; OpenAI-compatible endpoint |
-| Retrieval in eval | Bypassed (`GoldContextRetriever`) | Isolates prompt+LLM quality from retrieval quality |
-| Gold set schema | `{input, expected_output, context[], source_doc, question_type}` | Minimal but sufficient for relevance + faithfulness metrics |
-| CI trigger | Separate `eval.yml` workflow on `prompts/`, `eval/`, `eval_dataset/` changes | Eval only runs when prompt/dataset changes |
-
----
-
-## System Design (High-Level)
-
-![911automate High-Level System Architecture](assets/system_arch.png)
 
 ## Prompt Evaluation (DeepEval)
 
