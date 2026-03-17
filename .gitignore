@@ -216,3 +216,4 @@ src/rag/qdrant_storage
 
 .env
 .env.txt
+.deepeval
