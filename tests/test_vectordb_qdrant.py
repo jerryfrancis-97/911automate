@@ -7,7 +7,7 @@ import pytest
 
 from src.rag.core.config import Config
 from src.rag.core.types import ChunkItem
-from src.rag.retrieval.vectordb_qdrant import VectorDBQdrant
+from src.rag.retrieval.vectordb_qdrant import VectorDBQdrant, _id
 
 
 def _normalize(vec: list[float]) -> list[float]:
@@ -92,6 +92,32 @@ def test_search_vector_with_vectors_returns_vectors(vectordb: VectorDBQdrant) ->
     assert payload["text"] == "Alpha"
     assert len(vec) == dim
     assert all(isinstance(x, (int, float)) for x in vec)
+
+
+def test_id_converts_hex_string_to_int():
+    """16-char hex strings (from deterministic_chunk_id) are converted to int for Qdrant."""
+    hex_id = "10aa6a4ec73fd5a6"
+    converted = _id({"id": hex_id})
+    assert converted == int(hex_id, 16)
+    assert isinstance(converted, int)
+    assert _id({"id": 42}) == 42
+    assert converted != hex_id
+
+
+def test_upsert_hex_string_id_accepts_qdrant(vectordb: VectorDBQdrant) -> None:
+    """Chunks with hex string ids (like deterministic_chunk_id) upsert successfully."""
+    dim = vectordb._config.embedding_dim
+    chunks: list[ChunkItem] = [
+        {
+            "id": "10aa6a4ec73fd5a6",  # Qdrant rejects this as-is; _id converts to int
+            "vector": _make_vector(dim, 99),
+            "metadata": {"doc_id": "emergency_childbirth", "page": 1, "text": "Test chunk"},
+        },
+    ]
+    vectordb.upsert_chunks(chunks)
+    results = vectordb.search_vector(chunks[0]["vector"], top_k=1)
+    assert len(results) == 1
+    assert results[0][0]["doc_id"] == "emergency_childbirth"
 
 
 def test_search_empty_collection_returns_empty(vectordb: VectorDBQdrant) -> None:

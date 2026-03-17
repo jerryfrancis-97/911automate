@@ -126,9 +126,12 @@ class VectorDBQdrant:
         return out
 
 
-def _id(chunk: ChunkItem | dict | Any) -> str | int:
-    """Extract id from chunk (dict or object with id attr)."""
-    return chunk["id"] if isinstance(chunk, dict) else getattr(chunk, "id")
+def _id(chunk: ChunkItem | dict | Any) -> int | str:
+    """Extract id from chunk. Converts 16-char hex strings to int for Qdrant compatibility."""
+    raw = chunk["id"] if isinstance(chunk, dict) else getattr(chunk, "id")
+    if isinstance(raw, str) and len(raw) == 16 and all(c in "0123456789abcdef" for c in raw.lower()):
+        return int(raw, 16)
+    return raw
 
 
 def _vector(chunk: ChunkItem | dict | Any) -> list[float]:

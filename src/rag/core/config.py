@@ -39,7 +39,7 @@ class Config:
     qdrant_api_key: str | None = None
     collection_name: str = "911automate"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    ollama_embedding_model: str = "all-minilm"
+    ollama_embedding_model: str = "nomic-embed-text:latest"
     embedding_version: str = "v1"
     embedding_dim: int = 384
     chunk_size: int = 400

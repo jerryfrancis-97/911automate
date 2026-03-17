@@ -21,14 +21,15 @@ def test_config_default_values() -> None:
     config = Config()
     assert config.qdrant_url == "http://localhost:6333"
     assert config.qdrant_api_key is None
-    assert config.collection_name == "911automate"
+    # From config.yml (embedding via nomic-embed-text)
+    assert config.collection_name == "911automate_nomic"
     assert config.embedding_model == "sentence-transformers/all-MiniLM-L6-v2"
-    assert config.ollama_embedding_model == "all-minilm"
-    assert config.embedding_dim == 384
+    assert config.ollama_embedding_model == "nomic-embed-text:latest"
+    assert config.embedding_dim == 768
     assert config.top_k == 5
     assert config.confidence_threshold == 0.7
     assert config.max_clarify_rounds == 2
-    assert config.eval_mode is False
+    assert config.eval_mode is True
 
 
 def test_config_override_values() -> None:
@@ -43,4 +44,5 @@ def test_config_override_values() -> None:
     assert config.qdrant_api_key == "secret"
     assert config.collection_name == "custom_collection"
     assert config.top_k == 10
-    assert config.embedding_dim == 384
+    # embedding_dim should still default from config.yml unless explicitly overridden
+    assert config.embedding_dim == 768

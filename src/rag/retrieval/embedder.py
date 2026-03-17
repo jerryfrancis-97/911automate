@@ -3,6 +3,7 @@
 import math
 
 from src.rag.core.config import Config
+from src.rag.core.tokenizer_utils import NOMIC_MAX_TOKENS, truncate_to_tokens
 
 
 def _l2_normalize(vec: list[float]) -> list[float]:
@@ -32,10 +33,11 @@ class Embedder:
         )
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts; returns list of vectors. Empty input -> empty output."""
+        """Embed texts; returns list of vectors. Truncates inputs to avoid embedding failures."""
         if not texts:
             return []
-        vectors = self._embeddings.embed_documents(texts)
+        truncated = [truncate_to_tokens(t) for t in texts]
+        vectors = self._embeddings.embed_documents(truncated)
         # Fallback: normalize in Python if backend didn't
         if self._normalize and vectors:
             norm = math.sqrt(sum(x * x for x in vectors[0]))

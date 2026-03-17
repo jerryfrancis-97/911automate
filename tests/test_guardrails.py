@@ -72,7 +72,7 @@ def test_check_for_banned_content_allows_emergency_language():
 # should_escalate tests
 # ---------------------------------------------------------------------------
 
-_CFG = Config(confidence_threshold=0.7, max_clarify_rounds=3)
+_CFG = Config(confidence_threshold=0.7, max_clarify_rounds=3, eval_mode=False)
 
 
 def test_should_escalate_true():

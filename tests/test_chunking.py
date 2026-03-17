@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from src.rag.core.tokenizer_utils import count_tokens
 from src.rag.ingestion.chunking import create_chunks
 from src.rag.ingestion import PyMuPDFDocumentLoader
 
@@ -87,13 +88,14 @@ def test_chunk_sizes_reasonable_and_overlapping(sample_documents: list) -> None:
     if len(chunks) < 2:
         pytest.skip("Document too short for overlap test")
 
-    tolerance = 100  # separators and metadata can add chars
+    tolerance = 20  # token count tolerance
     for chunk in chunks:
-        assert len(chunk.page_content) <= chunk_size + tolerance, (
-            f"Chunk length {len(chunk.page_content)} exceeds {chunk_size + tolerance}"
+        tok = count_tokens(chunk.page_content)
+        assert tok <= chunk_size + tolerance, (
+            f"Chunk token count {tok} exceeds {chunk_size + tolerance}"
         )
 
-    # Overlap: RecursiveCharacterTextSplitter creates overlap; verify at least one
+    # Overlap: token splitter creates overlap; multiple chunks with small chunk_size
     # pair has overlapping content (suffix of chunk i in chunk i+1)
     overlap_found = False
     for i in range(len(chunks) - 1):
@@ -110,10 +112,10 @@ def test_chunk_sizes_reasonable_and_overlapping(sample_documents: list) -> None:
 
 
 def test_oversized_chunks_truncated() -> None:
-    """Chunks exceeding chunk_size are truncated to chunk_size, not raised."""
+    """Chunks exceeding chunk_size (tokens) are split, not raised."""
     chunk_size = 50
-    # No separators: splitter may produce one chunk larger than chunk_size
-    long_text = "x" * 150
+    # Text that yields >50 tokens
+    long_text = " ".join(["word"] * 100)
     docs = [
         Document(
             page_content=long_text,
@@ -127,9 +129,11 @@ def test_oversized_chunks_truncated() -> None:
         output_dir=TEST_OUTPUT_DIR,
     )
     assert len(chunks) > 0
+    tolerance = 15
     for chunk in chunks:
-        assert len(chunk.page_content) <= chunk_size, (
-            f"Chunk length {len(chunk.page_content)} exceeds {chunk_size}"
+        tok = count_tokens(chunk.page_content)
+        assert tok <= chunk_size + tolerance, (
+            f"Chunk token count {tok} exceeds {chunk_size + tolerance}"
         )
 
 

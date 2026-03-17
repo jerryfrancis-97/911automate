@@ -3,11 +3,11 @@
 
 qdrant_url: "http://localhost:6333"
 qdrant_api_key: null
-collection_name: "911automate"
+collection_name: "911automate_nomic"  # use new name if old collection has wrong dims (e.g. 911automate_nomic)
 embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
-ollama_embedding_model: "all-minilm"
+ollama_embedding_model: "nomic-embed-text:latest"
 embedding_version: "v1"
-embedding_dim: 384
+embedding_dim: 768  # nomic-embed-text produces 768-dim vectors
 
 # Chunking
 chunk_size: 400
@@ -17,7 +17,7 @@ chunk_overlap: 50
 top_k: 5
 confidence_threshold: 0.7
 max_clarify_rounds: 2
-eval_mode: false  # true = never escalate, keep suggesting responses for RAG evals
+eval_mode: true  # true = never escalate, keep suggesting responses for RAG evals
 
 # LLM
 ollama_base_url: "http://localhost:11434"

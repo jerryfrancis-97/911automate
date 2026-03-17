@@ -1,4 +1,4 @@
-"""Chunk documents using MarkdownHeaderTextSplitter + RecursiveCharacterTextSplitter."""
+"""Chunk documents using nomic-embed-text tokenizer (token-based splitting)."""
 
 import hashlib
 from pathlib import Path
@@ -8,7 +8,9 @@ try:
 except ImportError:
     from langchain.schema import Document
 
-from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from src.rag.core.tokenizer_utils import count_tokens, get_nomic_tokenizer
 
 
 def deterministic_chunk_id(doc_id: str, page: int, chunk_index: int) -> str:
@@ -25,35 +27,23 @@ def deterministic_chunk_id(doc_id: str, page: int, chunk_index: int) -> str:
 MIN_CHUNK_TOKENS = 5
 
 
-def _token_count_approx(text: str) -> int:
-    """Approximate token count using word count (avoids tokenizer dependency)."""
-    return len(text.split())
-
-
 def create_chunks(
     documents: list[Document],
-    chunk_size: int = 1000,
-    chunk_overlap: int = 200,
+    chunk_size: int = 400,
+    chunk_overlap: int = 50,
     output_dir: str | Path = "data/chunks",
 ) -> list[Document]:
-    """Split documents into chunks using MarkdownHeaderTextSplitter + RecursiveCharacterTextSplitter.
+    """Split documents into token-sized chunks using nomic-embed-text tokenizer.
 
-    Saves chunks to output_dir/{doc_id}/chunk_{chunk_index}.md. Returns chunk Documents.
-    Chunks with fewer than MIN_CHUNK_TOKENS tokens are skipped (not stored).
-    Validates that all produced chunks have page_content length <= chunk_size.
+    chunk_size and chunk_overlap are in tokens. Saves to output_dir/{doc_id}/chunk_{i}.md.
+    Chunks with fewer than MIN_CHUNK_TOKENS are skipped.
     """
     output_dir = Path(output_dir)
-    headers_to_split_on = [
-        ("#", "h1"),
-        ("##", "h2"),
-        ("###", "h3"),
-    ]
-    header_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
-    recursive_splitter = RecursiveCharacterTextSplitter(
+    splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
+        get_nomic_tokenizer(),
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
     )
-
     all_chunks: list[Document] = []
     chunk_index = 0
 
@@ -65,14 +55,12 @@ def create_chunks(
         page = doc.metadata.get("page", 0)
         source = doc.metadata.get("source", "")
 
-        header_chunks = header_splitter.split_text(doc.page_content)
-        size_chunks = recursive_splitter.split_documents(header_chunks)
-
+        split_docs = splitter.split_documents([doc])
         doc_dir = output_dir / doc_id
         doc_dir.mkdir(parents=True, exist_ok=True)
 
-        for sub_chunk in size_chunks:
-            if _token_count_approx(sub_chunk.page_content) < MIN_CHUNK_TOKENS:
+        for sub_chunk in split_docs:
+            if count_tokens(sub_chunk.page_content) < MIN_CHUNK_TOKENS:
                 continue
             meta = {
                 "doc_id": doc_id,
@@ -88,22 +76,21 @@ def create_chunks(
 
             out_path = doc_dir / f"chunk_{chunk_index}.md"
             out_path.write_text(sub_chunk.page_content, encoding="utf-8")
-
             chunk_index += 1
 
+    # Validate no chunk exceeds limit (safety check)
     tolerance = 10
     over_limit = [
-        (i, len(c.page_content))
+        (i, count_tokens(c.page_content))
         for i, c in enumerate(all_chunks)
-        if len(c.page_content) > chunk_size + tolerance
+        if count_tokens(c.page_content) > chunk_size + tolerance
     ]
     if over_limit:
-        details = ", ".join(f"chunk_{i}={n} chars" for i, n in over_limit[:5])
+        details = ", ".join(f"chunk_{i}={n} tok" for i, n in over_limit[:5])
         if len(over_limit) > 5:
             details += f" ... and {len(over_limit) - 5} more"
         raise ValueError(
-            f"Chunks exceed chunk_size={chunk_size}: {details}. "
-            "Reduce chunk_size in config or adjust document structure."
+            f"Chunks exceed chunk_size={chunk_size} tokens: {details}. "
+            "Reduce chunk_size in config."
         )
-
     return all_chunks

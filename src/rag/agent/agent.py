@@ -89,9 +89,9 @@ class Agent:
             else get_or_create_session(self._session_store, session_id)
         )
 
-        blocked = self._check_guardrails(question, sess)
-        if blocked is not None:
-            return blocked
+        # blocked = self._check_guardrails(question, sess)
+        # if blocked is not None:
+        #     return blocked
 
         chunks, sources = self._retrieve(question, sess)
         context_block = self._build_context(chunks)
@@ -131,11 +131,21 @@ class Agent:
         return chunks, sources
 
     def _build_context(self, chunks: list[RetrievedChunk]) -> str:
-        """Build context block from chunks."""
-        return (
-            "\n\n---\n\n".join(c["text"] for c in chunks if c.get("text"))
-            or "(No relevant context retrieved.)"
-        )
+        """Build context block from chunks. Includes doc_id and page from provenance when available."""
+        parts: list[str] = []
+        for c in chunks:
+            text = c.get("text") or ""
+            if not text.strip():
+                continue
+            prov = c.get("provenance") or {}
+            doc_id = prov.get("doc_id")
+            page = prov.get("page")
+            if doc_id is not None or page is not None:
+                header = f"[doc_id: {doc_id or ''}, page: {page if page is not None else ''}]"
+                parts.append(f"{header}\n\n{text}")
+            else:
+                parts.append(text)
+        return "\n\n---\n\n".join(parts) if parts else "(No relevant context retrieved.)"
 
     def _build_messages_with_history(
         self,
@@ -175,21 +185,22 @@ class Agent:
                 "I don't have enough information to answer confidently. "
                 "I'm escalating to a human operator for assistance."
             )
-        elif confidence < threshold and not would_escalate and not (
-            eval_mode and sess.clarify_rounds >= self._config.max_clarify_rounds
-        ):
-            clarify_prompt = self._prompt_handler.get_prompt("clarify")
-            user_content = (
-                f"Context:\n{context_block}\n\n"
-                f"User question: {question}\n\n"
-                "Generate 1–2 clarifying questions."
-            )
-            messages = self._build_messages_with_history(
-                clarify_prompt, user_content, sess
-            )
-            response_text = self._invoke_llm(messages, action="clarify")
-            action = "clarify"
-            sess.clarify_rounds += 1
+        # Clarify prompt handling (commented out for now)
+        # elif confidence < threshold and not would_escalate and not (
+        #     eval_mode and sess.clarify_rounds >= self._config.max_clarify_rounds
+        # ):
+        #     clarify_prompt = self._prompt_handler.get_prompt("clarify")
+        #     user_content = (
+        #         f"Context:\n{context_block}\n\n"
+        #         f"User question: {question}\n\n"
+        #         "Generate 1–2 clarifying questions."
+        #     )
+        #     messages = self._build_messages_with_history(
+        #         clarify_prompt, user_content, sess
+        #     )
+        #     response_text = self._invoke_llm(messages, action="clarify")
+        #     action = "clarify"
+        #     sess.clarify_rounds += 1
         else:
             sys_prompt = self._prompt_handler.get_prompt("agent_system")
             user_content = (
