@@ -11,11 +11,28 @@ Minimal production-ready Python project for 911/EMS automation with Retrieval-Au
 | **RAG Framework** | LangChain (ollama, openai, community, text-splitters) |
 | **Vector DB** | Qdrant |
 | **Embeddings** | Ollama (`nomic-embed-text`, 768-dim) |
+| **Retrieval** | Hybrid: embedding (Qdrant + MMR) + BM25 (rank_bm25) |
+| **Reranking** | Ollama (`sam860/qwen3-reranker:0.6b-Q8_0`) for query-passage scoring |
 | **LLM** | Ollama (`llama3.2`) or OpenAI-compatible API |
 | **Document Parsing** | PyMuPDF, Docling, pypdf |
 | **Dev** | pytest, mypy, yapf |
+| **RAG / Prompt Evaluation** | deepeval (CI check) |
 
 ---
+## Workflow
+
+```mermaid
+flowchart TD
+    Query --> EmbedRetriever["Embedding Retriever\nQdrant + MMR"]
+    Query --> BM25["BM25 Retriever"]
+    EmbedRetriever --> Reranker["Reranker\nqwen3-reranker"]
+    BM25 --> Reranker
+    Reranker --> TopN["Top N Chunks"]
+    TopN --> BuildContext["Build Context"]
+    BuildContext --> LLM["LLM"]
+```
+
+
 ## System Design (High-Level)
 
 ![911automate High-Level System Architecture](assets/system_arch.png)
@@ -39,8 +56,11 @@ Minimal production-ready Python project for 911/EMS automation with Retrieval-Au
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Vector DB | Qdrant (cosine distance) | Self-hosted, no vendor lock-in; first-class filtering and payload support |
-| Re-ranking | MMR (Maximal Marginal Relevance) with λ=0.5 | Balances relevance with diversity; reduces redundant chunks in context |
-| Candidate multiplier | 2× top_k | Fetches more candidates for MMR to select from |
+| Hybrid retrieval | Embedding (Qdrant + MMR) + BM25 (rank_bm25) | Combines semantic similarity with lexical/keyword matching; improves recall on specific terms |
+| BM25 tokenization | NLTK Porter stemmer + lowercase alphanumeric | Same preprocessing for corpus build (`run_prep_corpus.py`) and query; chunk text read from disk (never stemmed in context) |
+| Reranking | Ollama `qwen3-reranker` on (query, passage) pairs | Cross-encoder scoring for final relevance; deduplicates chunks from both retrievers by chunk filename |
+| Top chunks to LLM | `reranker_top_n` (default 3) | Reduces context size while keeping highest-scoring passages |
+| MMR (embedding path) | λ=0.5, candidate multiplier 2× | Balances relevance with diversity before BM25 merge |
 | L2 normalization | Applied post-embedding | Ensures cosine similarity is equivalent to dot product for Qdrant |
 
 ### Agent & LLM
@@ -99,6 +119,7 @@ Then ensure the required Ollama models are available (note: compose includes an 
 # Option A: manual pulls (recommended if ollama-init is disabled)
 docker compose exec ollama ollama pull llama3.2
 docker compose exec ollama ollama pull nomic-embed-text:latest
+docker compose exec ollama ollama pull sam860/qwen3-reranker:0.6b-Q8_0
 
 # Option B: run the init job on-demand
 docker compose run --rm ollama-init
@@ -152,6 +173,14 @@ Option B (CLI):
 python -m src.rag.cli ingest --path data/my.pdf --doc-id my_doc
 ```
 
+**4. Build tokenized corpus for BM25** (after ingestion; enables hybrid retrieval):
+
+```bash
+python run_prep_corpus.py
+```
+
+This writes `data/prep/tokenized_corpus.jsonl` from all chunks in `data/chunks/`. If this file is missing, the agent falls back to embedding-only retrieval.
+
 ### Quick API smoke test
 
 ```bash
@@ -180,4 +209,5 @@ python eval/run_eval.py --local-run
 ## Notes
 
 - **Configuration**: defaults to `config.yml`. Override via `CONFIG_PATH`, `QDRANT_URL`, `OLLAMA_URL`, `API_BASE_URL`, `API_KEY`.
+- **Hybrid RAG config** (`config.yml`): `bm25_top_k`, `tokenized_corpus_path`, `reranker_model`, `reranker_top_n` control BM25 retrieval and reranking. BM25 is optional; if the tokenized corpus is missing, the agent uses embedding retrieval only.
 - **Eval mode**: `eval_mode: true` disables escalation to keep runs deterministic for evaluation.
