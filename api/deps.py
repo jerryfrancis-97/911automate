@@ -13,6 +13,7 @@ import logging
 import os
 import threading
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from qdrant_client import QdrantClient
@@ -32,19 +33,33 @@ def _build_agent(config: Config, session_store: SessionStore):
     """Heavy initialisation: imports torch, loads embedding model, connects Qdrant."""
     from api.metrics import PrometheusMetricsRecorder
     from src.rag.agent.agent import Agent
+    from src.rag.retrieval.bm25_retrieval import BM25Retriever
     from src.rag.retrieval.embedder import Embedder
+    from src.rag.retrieval.reranker import Reranker
     from src.rag.retrieval.retriever import Retriever
     from src.rag.retrieval.vectordb_qdrant import VectorDBQdrant
 
     embedder = Embedder(config=config)
     vectordb = VectorDBQdrant(config=config)
     retriever = Retriever(embedder=embedder, vectordb=vectordb, config=config)
+    corpus_path = Path(config.tokenized_corpus_path)
+    if not corpus_path.is_absolute():
+        root = Path(__file__).resolve().parent.parent
+        corpus_path = root / corpus_path
+    bm25 = BM25Retriever(config=config) if corpus_path.exists() else None
+    reranker = Reranker(
+        model=config.reranker_model,
+        base_url=config.ollama_base_url,
+        top_n=config.reranker_top_n,
+    )
     metrics = PrometheusMetricsRecorder()
     return Agent(
         retriever=retriever,
         config=config,
         session_store=session_store,
         metrics=metrics,
+        bm25_retriever=bm25,
+        reranker=reranker,
     )
 
 

@@ -110,6 +110,7 @@ mypy_extensions==1.1.0
 narwhals==2.17.0
 nest-asyncio==1.6.0
 networkx==3.6.1
+nltk==3.9.1
 numba==0.64.0
 numpy==2.4.2
 nvidia-cublas-cu12==12.8.4.1
@@ -186,6 +187,7 @@ pytokens==0.4.1
 pytz==2025.2
 PyYAML==6.0.3
 qdrant-client==1.17.0
+rank-bm25==0.2.2
 RapidFuzz==3.14.3
 rapidocr==3.6.0
 referencing==0.37.0

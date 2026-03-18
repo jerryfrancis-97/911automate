@@ -10,6 +10,8 @@ from src.rag.agent.guardrails import GuardrailCheck, default_guardrail, should_e
 from src.rag.agent.llm_adapters import LLM, get_llm
 from src.rag.agent.prompt_handler import PromptHandler
 from src.rag.retrieval.retriever import Retriever
+from src.rag.retrieval.bm25_retrieval import BM25Retriever
+from src.rag.retrieval.reranker import Reranker
 from src.rag.core.types import MetricsRecorder, ProvenanceInfo, RetrievedChunk
 from src.rag.core.session_state import (
     InMemorySessionStore,
@@ -57,8 +59,12 @@ class Agent:
         session_store: SessionStore | None = None,
         metrics: MetricsRecorder | None = None,
         guardrail: GuardrailCheck | None = None,
+        bm25_retriever: BM25Retriever | None = None,
+        reranker: Reranker | None = None,
     ) -> None:
         self._retriever = retriever
+        self._bm25_retriever = bm25_retriever
+        self._reranker = reranker
         self._config = config
         self._llm = llm or get_llm(self._config)
         self._prompt_handler = prompt_handler or PromptHandler(
@@ -122,6 +128,10 @@ class Agent:
         """Retrieve chunks, update sess, return (chunks, sources)."""
         start = time.perf_counter()
         chunks = self._retriever.retrieve(question)
+        if self._bm25_retriever:
+            chunks = chunks + self._bm25_retriever.retrieve(question)
+        if self._reranker:
+            chunks = self._reranker.rerank(question, chunks)
         if self._metrics is not None:
             self._metrics.record_retrieval_latency(time.perf_counter() - start)
         sources = [c["provenance"] for c in chunks if "provenance" in c]

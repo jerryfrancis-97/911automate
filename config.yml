@@ -15,6 +15,10 @@ chunk_overlap: 50
 
 # Retrieval and agent
 top_k: 5
+bm25_top_k: 5
+tokenized_corpus_path: "data/prep/tokenized_corpus.jsonl"
+reranker_model: "sam860/qwen3-reranker:0.6b-Q8_0"
+reranker_top_n: 3
 confidence_threshold: 0.7
 max_clarify_rounds: 2
 eval_mode: true  # true = never escalate, keep suggesting responses for RAG evals

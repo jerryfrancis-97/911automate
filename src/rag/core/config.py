@@ -45,6 +45,10 @@ class Config:
     chunk_size: int
     chunk_overlap: int
     top_k: int
+    bm25_top_k: int
+    tokenized_corpus_path: str
+    reranker_model: str
+    reranker_top_n: int
     confidence_threshold: float
     max_clarify_rounds: int
     max_history_turns: int
@@ -114,6 +118,14 @@ class Config:
         self.chunk_overlap = int(data["chunk_overlap"])
 
         self.top_k = int(data["top_k"])
+        self.bm25_top_k = int(data.get("bm25_top_k", 5))
+        self.tokenized_corpus_path = str(
+            data.get("tokenized_corpus_path", "data/prep/tokenized_corpus.jsonl")
+        )
+        self.reranker_model = str(
+            data.get("reranker_model", "sam860/qwen3-reranker:0.6b-Q8_0")
+        )
+        self.reranker_top_n = int(data.get("reranker_top_n", 3))
         self.confidence_threshold = float(data["confidence_threshold"])
         self.max_clarify_rounds = int(data["max_clarify_rounds"])
         self.max_history_turns = int(data.get("max_history_turns", 4))
